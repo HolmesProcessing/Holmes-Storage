@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/streadway/amqp"
 )
 
 type config struct {
@@ -30,14 +29,6 @@ type dbConnector struct {
 	Database string
 }
 
-type totemResult struct {
-	Filename string `json:"filename"`
-	Data     string `json:"data"`
-	MD5      string `json:"md5"`
-	SHA1     string `json:"sha1"`
-	SHA256   string `json:"sha256"`
-}
-
 type Storer interface {
 	// Initializes the connection and the Storer object
 	// ip, port, user, passwort, db name
@@ -57,6 +48,9 @@ type Storer interface {
 
 var (
 	myStorer Storer
+	debug    *log.Logger
+	info     *log.Logger
+	warning  *log.Logger
 )
 
 func main() {
@@ -66,7 +60,8 @@ func main() {
 		err      error
 	)
 
-	// TODO: implement logging
+	// setup basic logging to stdout
+	initLogging("", "debug")
 
 	// load config
 	flag.BoolVar(&setup, "setup", false, "Setup the Database")
@@ -81,8 +76,11 @@ func main() {
 	conf := &config{}
 	cfile, _ := os.Open(confPath)
 	if err = json.NewDecoder(cfile).Decode(&conf); err != nil {
-		panic("Could not decode config file without errors! " + err.Error())
+		warning.Panicln("Couldn't decode config file without errors!", err.Error())
 	}
+
+	// reload logging with parameters from config
+	initLogging(conf.LogFile, conf.LogLevel)
 
 	// initialize storage
 	switch conf.Storage {
@@ -93,119 +91,65 @@ func main() {
 	//case "mysql":
 	//	myStorer = &storerMySQL{}
 	default:
-		panic("Please supply a storage engine via the storage cmd flag!")
+		warning.Panicln("Please supply a storage engine via the storage cmd flag!")
 	}
 
 	myStorer, err = myStorer.Initialize(conf.Database)
-
 	if err != nil {
-		panic(err.Error())
+		warning.Panicln("Storer initialization failed!", err.Error())
 	}
+	info.Println("Storage engine loaded:", conf.Storage)
 
 	// check if the user only wants to
 	// initialize the databse.
 	if setup {
 		err = myStorer.Setup()
 		if err != nil {
-			panic(err.Error())
+			warning.Panicln("Storer setup failed!", err.Error())
 		}
 
-		fmt.Println("Database was setup without errors.")
+		info.Println("Database was setup without errors.")
 		return // we don't want to execute this any further
 	}
 
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
 }
 
-func initAMQP(connect, queue, routingKey string, prefetchCount int) {
-	// listen on AMQP queue
-	amqpConn, err := amqp.Dial(connect)
-	if err != nil {
-		panic(err.Error())
-	}
+// initLogging sets up the three global loggers warning, info and debug
+func initLogging(file, level string) {
+	// default: only log to stdout
+	handler := io.MultiWriter(os.Stdout)
 
-	channel, err := amqpConn.Channel()
-	if err != nil {
-		panic(err.Error())
-	}
-
-	_, err = channel.QueueDeclare(
-		queue, // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	err = channel.Qos(
-		prefetchCount, // prefetch count
-		0,             // prefetch size
-		false,         // global
-	)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	msgs, err := channel.Consume(
-		queue,      // queue
-		routingKey, // consumer
-		false,      // auto-ack
-		false,      // exclusive
-		false,      // no-local
-		false,      // no-wait
-		nil,        // args
-	)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	forever := make(chan bool)
-	go func() {
-		for m := range msgs {
-			parseMessage(m)
+	if file != "" {
+		// log to file
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			err := ioutil.WriteFile(file, []byte(""), 0600)
+			if err != nil {
+				panic("Couldn't create the log!")
+			}
 		}
-	}()
-	<-forever
-}
 
-func parseMessage(msg amqp.Delivery) {
-	m := &totemResult{}
-	err := json.Unmarshal(msg.Body, m)
-	if err != nil {
-		fmt.Printf("Could not decode msg: %s\n", msg.Body)
-		msg.Nack(false, false)
+		f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			panic("Failed to open log file!")
+		}
+
+		handler = io.MultiWriter(f, os.Stdout)
 	}
 
-	// TODO: Add validation to received msg
-	//m.Validate()
-
-	// TODO: Totem needs to send more data
-	result := &dbResults{
-		Id:                "",
-		SchemaVersion:     "1",
-		UserId:            1,
-		SourceId:          1,
-		ServiceName:       "NotSend",
-		ServiceVersion:    "NotSend",
-		ServiceConfig:     "NotSend",
-		ObjectCategory:    "NotSend",
-		ObjectType:        "sample",
-		Results:           m.Data,
-		Date:              fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
-		WatchguardStatus:  "NotImplemented",
-		WatchguardLog:     []string{"NotImplemented"},
-		WatchguardVersion: "NotImplemented",
+	// TODO: make this nicer....
+	empty := io.MultiWriter()
+	if level == "warning" {
+		warning = log.New(handler, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+		info = log.New(empty, "INFO: ", log.Ldate|log.Ltime)
+		debug = log.New(empty, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	} else if level == "info" {
+		warning = log.New(handler, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+		info = log.New(handler, "INFO: ", log.Ldate|log.Ltime)
+		debug = log.New(empty, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	} else {
+		warning = log.New(handler, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+		info = log.New(handler, "INFO: ", log.Ldate|log.Ltime)
+		debug = log.New(handler, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
 	}
-
-	err = myStorer.StoreResult(result)
-	if err != nil {
-		fmt.Println("Failed to safe result:", err.Error())
-		msg.Nack(false, true)
-	}
-
-	msg.Ack(false)
 }

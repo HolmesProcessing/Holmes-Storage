@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -12,6 +13,7 @@ type storerMongoDB struct {
 	DB *mgo.Database
 }
 
+// wrapper of dbResults to use native bson _id
 type dbResultsMongodb struct {
 	Id                bson.ObjectId `json:"_id" bson:"_id,omitempty"`
 	SchemaVersion     string        `json:"schema_version"`
@@ -30,23 +32,38 @@ type dbResultsMongodb struct {
 }
 
 func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
-	connString := fmt.Sprintf("%s:%d", c[0].IP, c[0].Port)
+	if len(c) < 1 {
+		return nil, errors.New("Supply at least one node to connect to!")
+	}
 
-	// TODO: Make this better...
-	session, err := mgo.Dial(connString)
+	connStrings := make([]string, len(c))
+	for i, elem := range c {
+		if elem.User != "" {
+			connStrings[i] = fmt.Sprintf("%s:%s@%s:%d", elem.User, elem.Password, elem.IP, elem.Port)
+			continue
+		}
+
+		// no auth data given, do anonymous login
+		connStrings[i] = fmt.Sprintf("%s:%d", elem.IP, elem.Port)
+	}
+
+	session, err := mgo.Dial(strings.Join(connStrings, ","))
 	if err != nil {
 		return s, err
 	}
 
 	session.SetMode(mgo.Monotonic, true)
 
+	if c[0].Database == "" {
+		return nil, errors.New("Please supply a database to use!")
+	}
 	s.DB = session.DB(c[0].Database)
 
 	return s, nil
 }
 
 func (s storerMongoDB) Setup() error {
-	// dummy
+	// TODO: Create collections, set indexes
 	return nil
 }
 
