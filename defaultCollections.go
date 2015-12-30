@@ -4,14 +4,14 @@ package main
 This file contains structs to represent all default
 collections.
 If you need to extend these for your database specific
-implementation add a wrapper to your storers/*.go file,
+implementation add a wrapper to your storer*.go file,
 don't change these structs here!
 */
 
 type dbObjects struct {
-	MD5    string `json:"md5"`
-	SHA1   string `json:"sha1"`
 	SHA256 string `json:"sha256"`
+	SHA1   string `json:"sha1"`
+	MD5    string `json:"md5"`
 }
 
 type dbSubmissions struct {
@@ -20,6 +20,11 @@ type dbSubmissions struct {
 	Source string `json:"source"`
 	Name   string `json:"name"`
 	Date   string `json:"date"`
+}
+
+type dbSamples struct {
+	SHA256 string `json:"sha256"`
+	Data   []byte `json:"data"` //this will result in a base64 encoded string
 }
 
 type dbResults struct {

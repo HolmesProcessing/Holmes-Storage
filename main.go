@@ -38,6 +38,14 @@ type Storer interface {
 	// to create initial collections (if necessary)
 	Setup() error
 
+	// Stores a new sample in the database
+	// return "duplicate" error if already known
+	StoreSample(*dbSamples) error
+
+	// Gets a sample from the database, identified
+	// by its sha2 string
+	GetSample(string) (*dbSamples, error)
+
 	// Stores a result in the database
 	// (TODO: return generated Id)
 	StoreResult(*dbResults) error
@@ -91,7 +99,7 @@ func main() {
 	//case "mysql":
 	//	myStorer = &storerMySQL{}
 	default:
-		warning.Panicln("Please supply a storage engine via the storage cmd flag!")
+		warning.Panicln("Please supply a valid storage engine!")
 	}
 
 	myStorer, err = myStorer.Initialize(conf.Database)
@@ -112,7 +120,11 @@ func main() {
 		return // we don't want to execute this any further
 	}
 
+	// start to listen for new restults
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
+
+	// start webserver for HTTP API
+	//initHTTP()
 }
 
 // initLogging sets up the three global loggers warning, info and debug

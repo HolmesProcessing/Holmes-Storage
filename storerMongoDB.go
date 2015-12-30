@@ -31,6 +31,11 @@ type dbResultsMongodb struct {
 	WatchguardVersion string        `json:"watchguard_version"`
 }
 
+type dbSamplesMongodb struct {
+	SHA256 string      `json:"sha256"`
+	Data   bson.Binary `json:"data"`
+}
+
 func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
 	if len(c) < 1 {
 		return nil, errors.New("Supply at least one node to connect to!")
@@ -65,6 +70,33 @@ func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
 func (s storerMongoDB) Setup() error {
 	// TODO: Create collections, set indexes
 	return nil
+}
+
+func (s storerMongoDB) StoreSample(sample *dbSamples) error {
+	sampleM := &dbSamplesMongodb{
+		SHA256: sample.SHA256,
+		Data:   bson.Binary{Kind: 0, Data: sample.Data},
+	}
+
+	if err := s.DB.C("objects").Insert(sampleM); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s storerMongoDB) GetSample(id string) (*dbSamples, error) {
+	var sampleM dbSamplesMongodb
+	s.DB.C("objects").Find("{\"sha256\":\"" + id + "\"}").One(&sampleM)
+
+	if sampleM.Data.Data == nil {
+		return nil, errors.New("Not found")
+	}
+
+	return &dbSamples{
+		SHA256: sampleM.SHA256,
+		Data:   sampleM.Data.Data,
+	}, nil
 }
 
 func (s storerMongoDB) StoreResult(result *dbResults) error {
@@ -117,5 +149,4 @@ func (s storerMongoDB) GetResult(id string) (*dbResults, error) {
 		WatchguardLog:     result.WatchguardLog,
 		WatchguardVersion: result.WatchguardVersion,
 	}, nil
-
 }
