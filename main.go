@@ -11,14 +11,17 @@ import (
 )
 
 type config struct {
-	Storage       string
-	Database      []*dbConnector
+	Storage  string
+	Database []*dbConnector
+	LogFile  string
+	LogLevel string
+
 	AMQP          string
 	Queue         string
 	RoutingKey    string
 	PrefetchCount int
-	LogFile       string
-	LogLevel      string
+
+	HTTP string
 }
 
 type dbConnector struct {
@@ -124,7 +127,7 @@ func main() {
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
 
 	// start webserver for HTTP API
-	//initHTTP()
+	initHTTP(conf.HTTP)
 }
 
 // initLogging sets up the three global loggers warning, info and debug
