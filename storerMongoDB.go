@@ -72,13 +72,45 @@ func (s storerMongoDB) Setup() error {
 	return nil
 }
 
+func (s storerMongoDB) StoreObject(object *dbObjects) error {
+	if err := s.DB.C("objects").Insert(object); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s storerMongoDB) GetObject(id string) (*dbObjects, error) {
+	var object dbObjects
+	s.DB.C("objects").Find("{\"sha256\":\"" + id + "\"}").One(&object)
+
+	if object.SHA256 == "" {
+		return nil, errors.New("Not found")
+	}
+
+	return &object, nil
+}
+
+func (s storerMongoDB) StoreSubmission(submission *dbSubmissions) error {
+	if err := s.DB.C("submissions").Insert(submission); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s storerMongoDB) GetSubmission(id string) (*dbSubmissions, error) {
+	// TODO: add unique Id to submissions
+	return nil, errors.New("not implemented")
+}
+
 func (s storerMongoDB) StoreSample(sample *dbSamples) error {
 	sampleM := &dbSamplesMongodb{
 		SHA256: sample.SHA256,
 		Data:   bson.Binary{Kind: 0, Data: sample.Data},
 	}
 
-	if err := s.DB.C("objects").Insert(sampleM); err != nil {
+	if err := s.DB.C("samples").Insert(sampleM); err != nil {
 		return err
 	}
 
@@ -87,7 +119,7 @@ func (s storerMongoDB) StoreSample(sample *dbSamples) error {
 
 func (s storerMongoDB) GetSample(id string) (*dbSamples, error) {
 	var sampleM dbSamplesMongodb
-	s.DB.C("objects").Find("{\"sha256\":\"" + id + "\"}").One(&sampleM)
+	s.DB.C("samples").Find("{\"sha256\":\"" + id + "\"}").One(&sampleM)
 
 	if sampleM.Data.Data == nil {
 		return nil, errors.New("Not found")

@@ -14,10 +14,13 @@
 		"Database": "holmes-totem"
 		}
 	],
+	"LogFile": "",
+	"LogLevel": "debug",
+
 	"AMQP": "amqp://USER:PASSWORD@HOST:PORT",
 	"Queue": "totem_output",
 	"RoutingKey": "*.result.static.totem",
 	"PrefetchCount": 10,
-	"LogFile": "",
-	"LogLevel": "debug"
+
+	"HTTP": ":8016"
 }

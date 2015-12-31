@@ -24,7 +24,7 @@ type dbSubmissions struct {
 
 type dbSamples struct {
 	SHA256 string `json:"sha256"`
-	Data   []byte `json:"data"` //this will result in a base64 encoded string
+	Data   []byte `json:"data"` //this will result in a base64 encoded string when marshaled
 }
 
 type dbResults struct {

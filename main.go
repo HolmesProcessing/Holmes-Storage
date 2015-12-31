@@ -41,6 +41,12 @@ type Storer interface {
 	// to create initial collections (if necessary)
 	Setup() error
 
+	StoreObject(*dbObjects) error
+	GetObject(string) (*dbObjects, error)
+
+	StoreSubmission(*dbSubmissions) error
+	GetSubmission(string) (*dbSubmissions, error)
+
 	// Stores a new sample in the database
 	// return "duplicate" error if already known
 	StoreSample(*dbSamples) error
