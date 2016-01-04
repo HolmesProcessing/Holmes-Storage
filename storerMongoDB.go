@@ -13,7 +13,21 @@ type storerMongoDB struct {
 	DB *mgo.Database
 }
 
-// wrapper of dbResults to use native bson _id
+// wrapper of db* to use native bson _id
+type dbSubmissionsMongodb struct {
+	Id     bson.ObjectId `json:"_id" bson:"_id,omitempty"`
+	SHA256 string        `json:"sha256"`
+	UserId int           `json:"user_id"`
+	Source string        `json:"source"`
+	Name   string        `json:"name"`
+	Date   string        `json:"date"`
+}
+
+type dbSamplesMongodb struct {
+	SHA256 string      `json:"sha256"`
+	Data   bson.Binary `json:"data"`
+}
+
 type dbResultsMongodb struct {
 	Id                bson.ObjectId `json:"_id" bson:"_id,omitempty"`
 	SchemaVersion     string        `json:"schema_version"`
@@ -29,11 +43,6 @@ type dbResultsMongodb struct {
 	WatchguardStatus  string        `json:"watchguard_status"`
 	WatchguardLog     []string      `json:"watchguard_log"`
 	WatchguardVersion string        `json:"watchguard_version"`
-}
-
-type dbSamplesMongodb struct {
-	SHA256 string      `json:"sha256"`
-	Data   bson.Binary `json:"data"`
 }
 
 func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
@@ -92,7 +101,16 @@ func (s storerMongoDB) GetObject(id string) (*dbObjects, error) {
 }
 
 func (s storerMongoDB) StoreSubmission(submission *dbSubmissions) error {
-	if err := s.DB.C("submissions").Insert(submission); err != nil {
+	submissionM := &dbSubmissionsMongodb{
+		Id:     bson.NewObjectId(),
+		SHA256: submission.SHA256,
+		UserId: submission.UserId,
+		Source: submission.Source,
+		Name:   submission.Name,
+		Date:   submission.Date,
+	}
+
+	if err := s.DB.C("submissions").Insert(submissionM); err != nil {
 		return err
 	}
 
@@ -100,8 +118,22 @@ func (s storerMongoDB) StoreSubmission(submission *dbSubmissions) error {
 }
 
 func (s storerMongoDB) GetSubmission(id string) (*dbSubmissions, error) {
-	// TODO: add unique Id to submissions
-	return nil, errors.New("not implemented")
+	var submission dbSubmissionsMongodb
+
+	s.DB.C("submissions").Find(bson.M{"_id": bson.ObjectIdHex(id)}).One(&submission)
+
+	if submission.Id == "" {
+		return nil, errors.New("ID not found!")
+	}
+
+	return &dbSubmissions{
+		Id:     submission.Id.Hex(),
+		SHA256: submission.SHA256,
+		UserId: submission.UserId,
+		Source: submission.Source,
+		Name:   submission.Name,
+		Date:   submission.Date,
+	}, nil
 }
 
 func (s storerMongoDB) StoreSample(sample *dbSamples) error {

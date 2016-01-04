@@ -15,6 +15,7 @@ type dbObjects struct {
 }
 
 type dbSubmissions struct {
+	Id     string `json:"_id"`
 	SHA256 string `json:"sha256"`
 	UserId int    `json:"user_id"`
 	Source string `json:"source"`
