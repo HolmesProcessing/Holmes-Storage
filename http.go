@@ -42,7 +42,9 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		r.FormValue("source") == "" ||
 		r.FormValue("name") == "" ||
 		r.FormValue("date") == "" {
-		httpFailure(w, r, errors.New("Please supply all necessary values!"))
+
+		errMsg := fmt.Sprintf("user_id: %d, source: %s, name: %s, date: %s", userId, r.FormValue("source"), r.FormValue("name"), r.FormValue("date"))
+		httpFailure(w, r, errors.New("Please supply all necessary values! "+errMsg))
 		return
 	}
 
@@ -124,7 +126,8 @@ func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 
 	// TODO: Find way to supply a real name with sample
 	w.Header().Set("Content-Disposition", "attachment; filename="+sample.SHA256)
-	fmt.Fprint(w, sample.Data)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprint(w, string(sample.Data))
 }
 
 func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {

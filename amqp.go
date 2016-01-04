@@ -74,6 +74,8 @@ func initAMQP(connect, queue, routingKey string, prefetchCount int) {
 }
 
 func parseMessage(msg amqp.Delivery) {
+	debug.Println("Msg:", string(msg.Body))
+
 	m := &totemResult{}
 	err := json.Unmarshal(msg.Body, m)
 	if err != nil {

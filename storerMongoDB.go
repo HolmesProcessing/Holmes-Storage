@@ -91,7 +91,7 @@ func (s storerMongoDB) StoreObject(object *dbObjects) error {
 
 func (s storerMongoDB) GetObject(id string) (*dbObjects, error) {
 	var object dbObjects
-	s.DB.C("objects").Find("{\"sha256\":\"" + id + "\"}").One(&object)
+	s.DB.C("objects").Find(bson.M{"sha256": id}).One(&object)
 
 	if object.SHA256 == "" {
 		return nil, errors.New("Not found")
@@ -151,9 +151,9 @@ func (s storerMongoDB) StoreSample(sample *dbSamples) error {
 
 func (s storerMongoDB) GetSample(id string) (*dbSamples, error) {
 	var sampleM dbSamplesMongodb
-	s.DB.C("samples").Find("{\"sha256\":\"" + id + "\"}").One(&sampleM)
 
-	if sampleM.Data.Data == nil {
+	s.DB.C("samples").Find(bson.M{"sha256": id}).One(&sampleM)
+	if sampleM.SHA256 == "" {
 		return nil, errors.New("Not found")
 	}
 

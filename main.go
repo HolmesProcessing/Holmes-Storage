@@ -129,11 +129,11 @@ func main() {
 		return // we don't want to execute this any further
 	}
 
+	// start webserver for HTTP API
+	go initHTTP(conf.HTTP)
+
 	// start to listen for new restults
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
-
-	// start webserver for HTTP API
-	initHTTP(conf.HTTP)
 }
 
 // initLogging sets up the three global loggers warning, info and debug
