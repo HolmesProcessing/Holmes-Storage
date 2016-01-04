@@ -74,6 +74,8 @@ func initAMQP(connect, queue, routingKey string, prefetchCount int) {
 }
 
 func parseMessage(msg amqp.Delivery) {
+	debug.Println("Msg:", string(msg.Body))
+
 	m := &totemResult{}
 	err := json.Unmarshal(msg.Body, m)
 	if err != nil {
@@ -87,6 +89,7 @@ func parseMessage(msg amqp.Delivery) {
 	// TODO: Totem needs to send more data
 	result := &dbResults{
 		Id:                "",
+		SHA256:            m.SHA256,
 		SchemaVersion:     "1",
 		UserId:            1,
 		SourceId:          1,

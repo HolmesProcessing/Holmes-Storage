@@ -11,14 +11,17 @@ import (
 )
 
 type config struct {
-	Storage       string
-	Database      []*dbConnector
+	Storage  string
+	Database []*dbConnector
+	LogFile  string
+	LogLevel string
+
 	AMQP          string
 	Queue         string
 	RoutingKey    string
 	PrefetchCount int
-	LogFile       string
-	LogLevel      string
+
+	HTTP string
 }
 
 type dbConnector struct {
@@ -37,6 +40,20 @@ type Storer interface {
 	// Is called to setup the db on the very first run
 	// to create initial collections (if necessary)
 	Setup() error
+
+	StoreObject(*dbObjects) error
+	GetObject(string) (*dbObjects, error)
+
+	StoreSubmission(*dbSubmissions) error
+	GetSubmission(string) (*dbSubmissions, error)
+
+	// Stores a new sample in the database
+	// return "duplicate" error if already known
+	StoreSample(*dbSamples) error
+
+	// Gets a sample from the database, identified
+	// by its sha2 string
+	GetSample(string) (*dbSamples, error)
 
 	// Stores a result in the database
 	// (TODO: return generated Id)
@@ -91,7 +108,7 @@ func main() {
 	//case "mysql":
 	//	myStorer = &storerMySQL{}
 	default:
-		warning.Panicln("Please supply a storage engine via the storage cmd flag!")
+		warning.Panicln("Please supply a valid storage engine!")
 	}
 
 	myStorer, err = myStorer.Initialize(conf.Database)
@@ -112,6 +129,10 @@ func main() {
 		return // we don't want to execute this any further
 	}
 
+	// start webserver for HTTP API
+	go initHTTP(conf.HTTP)
+
+	// start to listen for new restults
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
 }
 
