@@ -30,6 +30,7 @@ type dbSamplesMongodb struct {
 
 type dbResultsMongodb struct {
 	Id                bson.ObjectId `json:"_id" bson:"_id,omitempty"`
+	SHA256            string        `json:"sha256"`
 	SchemaVersion     string        `json:"schema_version"`
 	UserId            int           `json:"user_id"`
 	SourceId          int           `json:"source_id"`
@@ -78,6 +79,41 @@ func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
 
 func (s storerMongoDB) Setup() error {
 	// TODO: Create collections, set indexes
+	// db.runCommand( { enablesharding : "holmes" } );
+	// db.runCommand( { shardcollection : "holmes.results", key : { "object_id" : 1 } } );
+
+	shaIndex := mgo.Index{
+		Key:        []string{"SHA256"},
+		Unique:     true,
+		DropDups:   true,
+		Background: false,
+		Sparse:     false,
+	}
+
+	if err := s.DB.C("objects").EnsureIndex(shaIndex); err != nil {
+		return err
+	}
+
+	if err := s.DB.C("samples").EnsureIndex(shaIndex); err != nil {
+		return err
+	}
+
+	idIndex := mgo.Index{
+		Key:        []string{"_id"},
+		Unique:     true,
+		DropDups:   true,
+		Background: false,
+		Sparse:     false,
+	}
+
+	if err := s.DB.C("submissions").EnsureIndex(idIndex); err != nil {
+		return err
+	}
+
+	if err := s.DB.C("results").EnsureIndex(idIndex); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -166,6 +202,7 @@ func (s storerMongoDB) GetSample(id string) (*dbSamples, error) {
 func (s storerMongoDB) StoreResult(result *dbResults) error {
 	resultsM := &dbResultsMongodb{
 		Id:                bson.NewObjectId(),
+		SHA256:            result.SHA256,
 		SchemaVersion:     result.SchemaVersion,
 		UserId:            result.UserId,
 		SourceId:          result.SourceId,
@@ -199,6 +236,7 @@ func (s storerMongoDB) GetResult(id string) (*dbResults, error) {
 
 	return &dbResults{
 		Id:                result.Id.Hex(),
+		SHA256:            result.SHA256,
 		SchemaVersion:     result.SchemaVersion,
 		UserId:            result.UserId,
 		SourceId:          result.SourceId,

@@ -89,6 +89,7 @@ func parseMessage(msg amqp.Delivery) {
 	// TODO: Totem needs to send more data
 	result := &dbResults{
 		Id:                "",
+		SHA256:            m.SHA256,
 		SchemaVersion:     "1",
 		UserId:            1,
 		SourceId:          1,

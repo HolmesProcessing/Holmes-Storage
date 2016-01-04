@@ -30,6 +30,7 @@ type dbSamples struct {
 
 type dbResults struct {
 	Id                string   `json:"_id"`
+	SHA256            string   `json:"sha256"`
 	SchemaVersion     string   `json:"schema_version"`
 	UserId            int      `json:"user_id"`
 	SourceId          int      `json:"source_id"`
