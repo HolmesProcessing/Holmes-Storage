@@ -93,7 +93,7 @@ func parseMessage(msg amqp.Delivery) {
 		SchemaVersion:     "1",
 		UserId:            1,
 		SourceId:          1,
-		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 1)[0],
+		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 2)[0],
 		ServiceVersion:    "NotSend",
 		ServiceConfig:     "NotSend",
 		ObjectCategory:    "NotSend",
