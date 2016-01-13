@@ -8,6 +8,10 @@ implementation add a wrapper to your storer*.go file,
 don't change these structs here!
 */
 
+import (
+	"encoding/json"
+)
+
 type dbObjects struct {
 	SHA256 string `json:"sha256"`
 	SHA1   string `json:"sha1"`
@@ -29,19 +33,19 @@ type dbSamples struct {
 }
 
 type dbResults struct {
-	Id                string   `json:"_id"`
-	SHA256            string   `json:"sha256"`
-	SchemaVersion     string   `json:"schema_version"`
-	UserId            int      `json:"user_id"`
-	SourceId          int      `json:"source_id"`
-	ServiceName       string   `json:"service_name"`
-	ServiceVersion    string   `json:"service_version"`
-	ServiceConfig     string   `json:"service_config"`
-	ObjectCategory    string   `json:"object_category"`
-	ObjectType        string   `json:"object_type"`
-	Results           string   `json:"results"`
-	Date              string   `json:"date"`
-	WatchguardStatus  string   `json:"watchguard_status"`
-	WatchguardLog     []string `json:"watchguard_log"`
-	WatchguardVersion string   `json:"watchguard_version"`
+	Id                string          `json:"_id"`
+	SHA256            string          `json:"sha256"`
+	SchemaVersion     string          `json:"schema_version"`
+	UserId            int             `json:"user_id"`
+	SourceId          int             `json:"source_id"`
+	ServiceName       string          `json:"service_name"`
+	ServiceVersion    string          `json:"service_version"`
+	ServiceConfig     string          `json:"service_config"`
+	ObjectCategory    string          `json:"object_category"`
+	ObjectType        string          `json:"object_type"`
+	Results           json.RawMessage `json:"results"`
+	Date              string          `json:"date"`
+	WatchguardStatus  string          `json:"watchguard_status"`
+	WatchguardLog     []string        `json:"watchguard_log"`
+	WatchguardVersion string          `json:"watchguard_version"`
 }

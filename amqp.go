@@ -9,12 +9,20 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type totemResult struct {
+type totemResultPre struct {
 	Filename string `json:"filename"`
 	Data     string `json:"data"`
 	MD5      string `json:"md5"`
 	SHA1     string `json:"sha1"`
 	SHA256   string `json:"sha256"`
+}
+
+type totemResult struct {
+	Filename string          `json:"filename"`
+	Data     json.RawMessage `json:"data"`
+	MD5      string          `json:"md5"`
+	SHA1     string          `json:"sha1"`
+	SHA256   string          `json:"sha256"`
 }
 
 func initAMQP(connect, queue, routingKey string, prefetchCount int) {
@@ -76,10 +84,17 @@ func initAMQP(connect, queue, routingKey string, prefetchCount int) {
 func parseMessage(msg amqp.Delivery) {
 	debug.Println("Msg:", string(msg.Body))
 
-	m := &totemResult{}
-	err := json.Unmarshal(msg.Body, m)
+	mPre := &totemResultPre{}
+	err := json.Unmarshal(msg.Body, mPre)
 	if err != nil {
 		warning.Printf("Could not decode msg: %s\n", msg.Body)
+		msg.Nack(false, false)
+	}
+
+	var resData json.RawMessage
+	err = json.Unmarshal(mPre.Data, resData)
+	if err != nil {
+		warning.Printf("Could not decode data: %s\n", mPre.Data)
 		msg.Nack(false, false)
 	}
 
@@ -98,7 +113,7 @@ func parseMessage(msg amqp.Delivery) {
 		ServiceConfig:     "NotSend",
 		ObjectCategory:    "NotSend",
 		ObjectType:        "sample",
-		Results:           m.Data,
+		Results:           resData,
 		Date:              fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
