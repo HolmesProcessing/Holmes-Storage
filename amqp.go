@@ -9,20 +9,12 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type totemResultPre struct {
+type totemResult struct {
 	Filename string `json:"filename"`
 	Data     string `json:"data"`
 	MD5      string `json:"md5"`
 	SHA1     string `json:"sha1"`
 	SHA256   string `json:"sha256"`
-}
-
-type totemResult struct {
-	Filename string          `json:"filename"`
-	Data     json.RawMessage `json:"data"`
-	MD5      string          `json:"md5"`
-	SHA1     string          `json:"sha1"`
-	SHA256   string          `json:"sha256"`
 }
 
 func initAMQP(connect, queue, routingKey string, prefetchCount int) {
@@ -74,7 +66,7 @@ func initAMQP(connect, queue, routingKey string, prefetchCount int) {
 	forever := make(chan bool)
 	go func() {
 		for m := range msgs {
-			debug.Println("Received new message")
+			info.Println("Received new message")
 			parseMessage(m)
 		}
 	}()
@@ -84,18 +76,23 @@ func initAMQP(connect, queue, routingKey string, prefetchCount int) {
 func parseMessage(msg amqp.Delivery) {
 	debug.Println("Msg:", string(msg.Body))
 
-	mPre := &totemResultPre{}
-	err := json.Unmarshal(msg.Body, mPre)
+	m := &totemResult{}
+	err := json.Unmarshal(msg.Body, m)
 	if err != nil {
 		warning.Printf("Could not decode msg: %s\n", msg.Body)
 		msg.Nack(false, false)
+		return
 	}
 
-	var resData json.RawMessage
-	err = json.Unmarshal(mPre.Data, resData)
+	// since totem sends the results as json encoded string
+	// (which contains json) we need to unmarshal data
+	// and save it this way.
+	var resData map[string]interface{}
+	err = json.Unmarshal([]byte(m.Data), &resData)
 	if err != nil {
-		warning.Printf("Could not decode data: %s\n", mPre.Data)
+		warning.Printf("Could not decode data: %s\n", m.Data)
 		msg.Nack(false, false)
+		return
 	}
 
 	// TODO: Add validation to received msg
@@ -122,8 +119,9 @@ func parseMessage(msg amqp.Delivery) {
 
 	err = myStorer.StoreResult(result)
 	if err != nil {
-		warning.Println("Failed to safe result:", err.Error())
+		warning.Println("Failed to safe result:", err.Error(), "SHA256:", m.SHA256)
 		msg.Nack(false, true)
+		return
 	}
 
 	debug.Println("Msg saved successfully!")
