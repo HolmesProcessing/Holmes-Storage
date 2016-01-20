@@ -1,9 +1,5 @@
 package main
 
-import (
-//	"encoding/json"
-)
-
 /*
 This file contains structs to represent all default
 collections.

@@ -1,7 +1,6 @@
 package main
 
 import (
-	//	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -218,8 +217,6 @@ func (s storerMongoDB) StoreResult(result *dbResults) error {
 		WatchguardLog:     result.WatchguardLog,
 		WatchguardVersion: result.WatchguardVersion,
 	}
-
-	debug.Printf("%v", resultsM)
 
 	if err := s.DB.C("results").Insert(resultsM); err != nil {
 		return err
