@@ -66,7 +66,7 @@ func initAMQP(connect, queue, routingKey string, prefetchCount int) {
 	forever := make(chan bool)
 	go func() {
 		for m := range msgs {
-			debug.Println("Received new message")
+			info.Println("Received new message")
 			parseMessage(m)
 		}
 	}()
@@ -81,6 +81,18 @@ func parseMessage(msg amqp.Delivery) {
 	if err != nil {
 		warning.Printf("Could not decode msg: %s\n", msg.Body)
 		msg.Nack(false, false)
+		return
+	}
+
+	// since totem sends the results as json encoded string
+	// (which contains json) we need to unmarshal data
+	// and save it this way.
+	var resData map[string]interface{}
+	err = json.Unmarshal([]byte(m.Data), &resData)
+	if err != nil {
+		warning.Printf("Could not decode data: %s\n", m.Data)
+		msg.Nack(false, false)
+		return
 	}
 
 	// TODO: Add validation to received msg
@@ -93,12 +105,12 @@ func parseMessage(msg amqp.Delivery) {
 		SchemaVersion:     "1",
 		UserId:            1,
 		SourceId:          1,
-		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 1)[0],
+		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 2)[0],
 		ServiceVersion:    "NotSend",
 		ServiceConfig:     "NotSend",
 		ObjectCategory:    "NotSend",
 		ObjectType:        "sample",
-		Results:           m.Data,
+		Results:           resData,
 		Date:              fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
@@ -107,8 +119,9 @@ func parseMessage(msg amqp.Delivery) {
 
 	err = myStorer.StoreResult(result)
 	if err != nil {
-		warning.Println("Failed to safe result:", err.Error())
+		warning.Println("Failed to safe result:", err.Error(), "SHA256:", m.SHA256)
 		msg.Nack(false, true)
+		return
 	}
 
 	debug.Println("Msg saved successfully!")

@@ -29,21 +29,21 @@ type dbSamplesMongodb struct {
 }
 
 type dbResultsMongodb struct {
-	Id                bson.ObjectId `json:"_id" bson:"_id,omitempty"`
-	SHA256            string        `json:"sha256"`
-	SchemaVersion     string        `json:"schema_version"`
-	UserId            int           `json:"user_id"`
-	SourceId          int           `json:"source_id"`
-	ServiceName       string        `json:"service_name"`
-	ServiceVersion    string        `json:"service_version"`
-	ServiceConfig     string        `json:"service_config"`
-	ObjectCategory    string        `json:"object_category"`
-	ObjectType        string        `json:"object_type"`
-	Results           string        `json:"results"`
-	Date              string        `json:"date"`
-	WatchguardStatus  string        `json:"watchguard_status"`
-	WatchguardLog     []string      `json:"watchguard_log"`
-	WatchguardVersion string        `json:"watchguard_version"`
+	Id                bson.ObjectId          `json:"_id" bson:"_id,omitempty"`
+	SHA256            string                 `json:"sha256"`
+	SchemaVersion     string                 `json:"schema_version"`
+	UserId            int                    `json:"user_id"`
+	SourceId          int                    `json:"source_id"`
+	ServiceName       string                 `json:"service_name"`
+	ServiceVersion    string                 `json:"service_version"`
+	ServiceConfig     string                 `json:"service_config"`
+	ObjectCategory    string                 `json:"object_category"`
+	ObjectType        string                 `json:"object_type"`
+	Results           map[string]interface{} `json:"results"`
+	Date              string                 `json:"date"`
+	WatchguardStatus  string                 `json:"watchguard_status"`
+	WatchguardLog     []string               `json:"watchguard_log"`
+	WatchguardVersion string                 `json:"watchguard_version"`
 }
 
 func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
