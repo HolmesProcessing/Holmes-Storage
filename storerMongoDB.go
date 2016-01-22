@@ -40,6 +40,7 @@ type dbResultsMongodb struct {
 	ObjectCategory    string                 `json:"object_category"`
 	ObjectType        string                 `json:"object_type"`
 	Results           map[string]interface{} `json:"results"`
+	Tags              []string               `json:"tags"`
 	Date              string                 `json:"date"`
 	WatchguardStatus  string                 `json:"watchguard_status"`
 	WatchguardLog     []string               `json:"watchguard_log"`
@@ -212,6 +213,7 @@ func (s storerMongoDB) StoreResult(result *dbResults) error {
 		ObjectCategory:    result.ObjectCategory,
 		ObjectType:        result.ObjectType,
 		Results:           result.Results,
+		Tags:              result.Tags,
 		Date:              result.Date,
 		WatchguardStatus:  result.WatchguardStatus,
 		WatchguardLog:     result.WatchguardLog,
@@ -246,6 +248,7 @@ func (s storerMongoDB) GetResult(id string) (*dbResults, error) {
 		ObjectCategory:    result.ObjectCategory,
 		ObjectType:        result.ObjectType,
 		Results:           result.Results,
+		Tags:              result.Tags,
 		Date:              result.Date,
 		WatchguardStatus:  result.WatchguardStatus,
 		WatchguardLog:     result.WatchguardLog,

@@ -10,11 +10,12 @@ import (
 )
 
 type totemResult struct {
-	Filename string `json:"filename"`
-	Data     string `json:"data"`
-	MD5      string `json:"md5"`
-	SHA1     string `json:"sha1"`
-	SHA256   string `json:"sha256"`
+	Filename string   `json:"filename"`
+	Data     string   `json:"data"`
+	Tags     []string `json:"tags"`
+	MD5      string   `json:"md5"`
+	SHA1     string   `json:"sha1"`
+	SHA256   string   `json:"sha256"`
 }
 
 func initAMQP(connect, queue, routingKey string, prefetchCount int) {
@@ -111,6 +112,7 @@ func parseMessage(msg amqp.Delivery) {
 		ObjectCategory:    "NotSend",
 		ObjectType:        "sample",
 		Results:           resData,
+		Tags:              m.Tags,
 		Date:              fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
