@@ -40,6 +40,7 @@ type dbResults struct {
 	ObjectCategory    string                 `json:"object_category"`
 	ObjectType        string                 `json:"object_type"`
 	Results           map[string]interface{} `json:"results"`
+	Tags              []string               `json:"tags"`
 	Date              string                 `json:"date"`
 	WatchguardStatus  string                 `json:"watchguard_status"`
 	WatchguardLog     []string               `json:"watchguard_log"`
