@@ -1,4 +1,4 @@
-package main
+package storerMongoDB
 
 import (
 	"errors"
@@ -7,14 +7,16 @@ import (
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
 )
 
-type storerMongoDB struct {
+type StorerMongoDB struct {
 	DB *mgo.Database
 }
 
-// wrapper of db* to use native bson _id
-type dbSubmissionsMongodb struct {
+// wrapper for generic collections to use native bson _id
+type Submission struct {
 	Id     bson.ObjectId `json:"_id" bson:"_id,omitempty"`
 	SHA256 string        `json:"sha256"`
 	UserId int           `json:"user_id"`
@@ -23,12 +25,12 @@ type dbSubmissionsMongodb struct {
 	Date   string        `json:"date"`
 }
 
-type dbSamplesMongodb struct {
+type Sample struct {
 	SHA256 string      `json:"sha256"`
 	Data   bson.Binary `json:"data"`
 }
 
-type dbResultsMongodb struct {
+type Result struct {
 	Id                bson.ObjectId          `json:"_id" bson:"_id,omitempty"`
 	SHA256            string                 `json:"sha256"`
 	SchemaVersion     string                 `json:"schema_version"`
@@ -47,7 +49,7 @@ type dbResultsMongodb struct {
 	WatchguardVersion string                 `json:"watchguard_version"`
 }
 
-func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
+func (s StorerMongoDB) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
 	if len(c) < 1 {
 		return nil, errors.New("Supply at least one node to connect to!")
 	}
@@ -78,7 +80,7 @@ func (s storerMongoDB) Initialize(c []*dbConnector) (Storer, error) {
 	return s, nil
 }
 
-func (s storerMongoDB) Setup() error {
+func (s StorerMongoDB) Setup() error {
 	// TODO: Create collections, set indexes
 	// db.runCommand( { enablesharding : "holmes" } );
 	// db.runCommand( { shardcollection : "holmes.results", key : { "object_id" : 1 } } );
@@ -118,7 +120,7 @@ func (s storerMongoDB) Setup() error {
 	return nil
 }
 
-func (s storerMongoDB) StoreObject(object *dbObjects) error {
+func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) error {
 	if err := s.DB.C("objects").Insert(object); err != nil {
 		return err
 	}
@@ -126,8 +128,8 @@ func (s storerMongoDB) StoreObject(object *dbObjects) error {
 	return nil
 }
 
-func (s storerMongoDB) GetObject(id string) (*dbObjects, error) {
-	var object dbObjects
+func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
+	var object storerGeneric.Object
 	s.DB.C("objects").Find(bson.M{"sha256": id}).One(&object)
 
 	if object.SHA256 == "" {
@@ -137,8 +139,8 @@ func (s storerMongoDB) GetObject(id string) (*dbObjects, error) {
 	return &object, nil
 }
 
-func (s storerMongoDB) StoreSubmission(submission *dbSubmissions) error {
-	submissionM := &dbSubmissionsMongodb{
+func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) error {
+	submissionM := &Submission{
 		Id:     bson.NewObjectId(),
 		SHA256: submission.SHA256,
 		UserId: submission.UserId,
@@ -154,8 +156,8 @@ func (s storerMongoDB) StoreSubmission(submission *dbSubmissions) error {
 	return nil
 }
 
-func (s storerMongoDB) GetSubmission(id string) (*dbSubmissions, error) {
-	var submission dbSubmissionsMongodb
+func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, error) {
+	var submission Submission
 
 	s.DB.C("submissions").Find(bson.M{"_id": bson.ObjectIdHex(id)}).One(&submission)
 
@@ -163,7 +165,7 @@ func (s storerMongoDB) GetSubmission(id string) (*dbSubmissions, error) {
 		return nil, errors.New("ID not found!")
 	}
 
-	return &dbSubmissions{
+	return &storerGeneric.Submission{
 		Id:     submission.Id.Hex(),
 		SHA256: submission.SHA256,
 		UserId: submission.UserId,
@@ -173,8 +175,8 @@ func (s storerMongoDB) GetSubmission(id string) (*dbSubmissions, error) {
 	}, nil
 }
 
-func (s storerMongoDB) StoreSample(sample *dbSamples) error {
-	sampleM := &dbSamplesMongodb{
+func (s StorerMongoDB) StoreSample(sample *storerGeneric.Sample) error {
+	sampleM := &Sample{
 		SHA256: sample.SHA256,
 		Data:   bson.Binary{Kind: 0, Data: sample.Data},
 	}
@@ -186,22 +188,22 @@ func (s storerMongoDB) StoreSample(sample *dbSamples) error {
 	return nil
 }
 
-func (s storerMongoDB) GetSample(id string) (*dbSamples, error) {
-	var sampleM dbSamplesMongodb
+func (s StorerMongoDB) GetSample(id string) (*storerGeneric.Sample, error) {
+	var sampleM Sample
 
 	s.DB.C("samples").Find(bson.M{"sha256": id}).One(&sampleM)
 	if sampleM.SHA256 == "" {
 		return nil, errors.New("Not found")
 	}
 
-	return &dbSamples{
+	return &storerGeneric.Sample{
 		SHA256: sampleM.SHA256,
 		Data:   sampleM.Data.Data,
 	}, nil
 }
 
-func (s storerMongoDB) StoreResult(result *dbResults) error {
-	resultsM := &dbResultsMongodb{
+func (s StorerMongoDB) StoreResult(result *storerGeneric.Result) error {
+	resultsM := &Result{
 		Id:                bson.NewObjectId(),
 		SHA256:            result.SHA256,
 		SchemaVersion:     result.SchemaVersion,
@@ -227,8 +229,8 @@ func (s storerMongoDB) StoreResult(result *dbResults) error {
 	return nil
 }
 
-func (s storerMongoDB) GetResult(id string) (*dbResults, error) {
-	var result dbResultsMongodb
+func (s StorerMongoDB) GetResult(id string) (*storerGeneric.Result, error) {
+	var result Result
 
 	s.DB.C("results").Find(bson.M{"_id": bson.ObjectIdHex(id)}).One(&result)
 
@@ -236,7 +238,7 @@ func (s storerMongoDB) GetResult(id string) (*dbResults, error) {
 		return nil, errors.New("ID not found!")
 	}
 
-	return &dbResults{
+	return &storerGeneric.Result{
 		Id:                result.Id.Hex(),
 		SHA256:            result.SHA256,
 		SchemaVersion:     result.SchemaVersion,

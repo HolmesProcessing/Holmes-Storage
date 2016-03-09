@@ -8,11 +8,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	//"github.com/cynexit/Holmes-Storage/storerCassandra"
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
+	"github.com/cynexit/Holmes-Storage/storerMongoDB"
 )
 
 type config struct {
 	Storage  string
-	Database []*dbConnector
+	Database []*storerGeneric.DBConnector
 	LogFile  string
 	LogLevel string
 
@@ -24,50 +28,12 @@ type config struct {
 	HTTP string
 }
 
-type dbConnector struct {
-	IP       string
-	Port     int
-	User     string
-	Password string
-	Database string
-}
-
-type Storer interface {
-	// Initializes the connection and the Storer object
-	// ip, port, user, passwort, db name
-	Initialize([]*dbConnector) (Storer, error)
-
-	// Is called to setup the db on the very first run
-	// to create initial collections (if necessary)
-	Setup() error
-
-	StoreObject(*dbObjects) error
-	GetObject(string) (*dbObjects, error)
-
-	StoreSubmission(*dbSubmissions) error
-	GetSubmission(string) (*dbSubmissions, error)
-
-	// Stores a new sample in the database
-	// return "duplicate" error if already known
-	StoreSample(*dbSamples) error
-
-	// Gets a sample from the database, identified
-	// by its sha2 string
-	GetSample(string) (*dbSamples, error)
-
-	// Stores a result in the database
-	// (TODO: return generated Id)
-	StoreResult(*dbResults) error
-
-	// Gets a result by Id from the database
-	GetResult(string) (*dbResults, error)
-}
-
 var (
-	myStorer Storer
-	debug    *log.Logger
-	info     *log.Logger
-	warning  *log.Logger
+	mainStorer storerGeneric.Storer
+	objStorer  storerGeneric.Storer
+	debug      *log.Logger
+	info       *log.Logger
+	warning    *log.Logger
 )
 
 func main() {
@@ -102,16 +68,16 @@ func main() {
 	// initialize storage
 	switch conf.Storage {
 	case "mongodb":
-		myStorer = &storerMongoDB{}
+		mainStorer = &storerMongoDB.StorerMongoDB{}
 	//case "cassandra":
-	//	myStorer = &storerCassandra{}
+	//	mainStorer = &storerCassandra{}
 	//case "mysql":
-	//	myStorer = &storerMySQL{}
+	//	mainStorer = &storerMySQL{}
 	default:
 		warning.Panicln("Please supply a valid storage engine!")
 	}
 
-	myStorer, err = myStorer.Initialize(conf.Database)
+	mainStorer, err = mainStorer.Initialize(conf.Database)
 	if err != nil {
 		warning.Panicln("Storer initialization failed!", err.Error())
 	}
@@ -120,7 +86,7 @@ func main() {
 	// check if the user only wants to
 	// initialize the databse.
 	if setup {
-		err = myStorer.Setup()
+		err = mainStorer.Setup()
 		if err != nil {
 			warning.Panicln("Storer setup failed!", err.Error())
 		}

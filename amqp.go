@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
+
 	"github.com/streadway/amqp"
 )
 
@@ -100,7 +102,7 @@ func parseMessage(msg amqp.Delivery) {
 	//m.Validate()
 
 	// TODO: Totem needs to send more data
-	result := &dbResults{
+	result := &storerGeneric.Result{
 		Id:                "",
 		SHA256:            m.SHA256,
 		SchemaVersion:     "1",
@@ -119,8 +121,14 @@ func parseMessage(msg amqp.Delivery) {
 		WatchguardVersion: "NotImplemented",
 	}
 
-	err = myStorer.StoreResult(result)
+	err = mainStorer.StoreResult(result)
 	if err != nil {
+		if strings.Contains(err.Error(), "Size must be between 0 and 16793600") {
+			warning.Println("Message to large, dropped!", err.Error())
+			msg.Ack(false)
+			return
+		}
+
 		warning.Println("Failed to safe result:", err.Error(), "SHA256:", m.SHA256)
 		msg.Nack(false, true)
 		return

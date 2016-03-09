@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
+
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -75,13 +77,13 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	md5String := fmt.Sprintf("%x", hMD5.Sum(nil))
 
 	// create structs for db
-	object := &dbObjects{
+	object := &storerGeneric.Object{
 		SHA256: sha256String,
 		SHA1:   sha1String,
 		MD5:    md5String,
 	}
 
-	submission := &dbSubmissions{
+	submission := &storerGeneric.Submission{
 		SHA256: sha256String,
 		UserId: userId,
 		Source: r.FormValue("source"),
@@ -89,25 +91,25 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		Date:   r.FormValue("date"),
 	}
 
-	sample := &dbSamples{
+	sample := &storerGeneric.Sample{
 		SHA256: sha256String,
 		Data:   fileBytes,
 	}
 
 	// save structs to db
-	err = myStorer.StoreObject(object)
+	err = mainStorer.StoreObject(object)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
 	}
 
-	err = myStorer.StoreSubmission(submission)
+	err = mainStorer.StoreSubmission(submission)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
 	}
 
-	err = myStorer.StoreSample(sample)
+	err = mainStorer.StoreSample(sample)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
@@ -117,7 +119,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 }
 
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	sample, err := myStorer.GetSample(ps.ByName("sha256"))
+	sample, err := mainStorer.GetSample(ps.ByName("sha256"))
 
 	if err != nil {
 		httpFailure(w, r, err)
