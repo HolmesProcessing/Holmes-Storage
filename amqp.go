@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -118,12 +117,12 @@ func parseMessage(msg amqp.Delivery) {
 		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 2)[0],
 		ServiceVersion:    "NotSend",
 		ServiceConfig:     "NotSend",
-		ObjectCategory:    "NotSend",
+		ObjectCategory:    []string{"NotSend"},
 		ObjectType:        "sample",
 		Results:           m.Data,
 		Tags:              m.Tags,
-		StartedDateTime:   "NotSend",
-		FinishedDateTime:  fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
+		StartedDateTime:   time.Now(),
+		FinishedDateTime:  time.Now(),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
 		WatchguardVersion: "NotImplemented",

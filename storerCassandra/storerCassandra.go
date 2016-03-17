@@ -37,6 +37,7 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 
 	var err error
 	cluster := gocql.NewCluster(connStrings...)
+	cluster.ProtoVersion = 4
 	cluster.Keyspace = c[0].Database
 	cluster.Consistency = gocql.Quorum
 	s.DB, err = cluster.CreateSession()

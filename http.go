@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/cynexit/Holmes-Storage/storerGeneric"
 
@@ -81,12 +82,18 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		MD5:    md5String,
 	}
 
+	date, err := time.Parse(time.RFC3339, r.FormValue("date"))
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
 	submission := &storerGeneric.Submission{
 		SHA256:  sha256String,
 		UserId:  userId,
 		Source:  r.FormValue("source"),
 		ObjName: r.FormValue("name"),
-		Date:    r.FormValue("date"),
+		Date:    date,
 	}
 
 	sample := &storerGeneric.Sample{

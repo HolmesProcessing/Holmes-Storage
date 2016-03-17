@@ -1,5 +1,9 @@
 package storerGeneric
 
+import (
+	"time"
+)
+
 /*
 This file contains structs to represent all default
 collections and interfaces.
@@ -58,14 +62,14 @@ type Object struct {
 }
 
 type Submission struct {
-	Id      string   `json:"id"`
-	SHA256  string   `json:"sha256"`
-	UserId  string   `json:"user_id"`
-	Source  string   `json:"source"`
-	Date    string   `json:"date"`
-	ObjName string   `json:"obj_name"`
-	Tags    []string `json:"tags"`
-	Comment string   `json:"comment"`
+	Id      string    `json:"id"`
+	SHA256  string    `json:"sha256"`
+	UserId  string    `json:"user_id"`
+	Source  string    `json:"source"`
+	Date    time.Time `json:"date"`
+	ObjName string    `json:"obj_name"`
+	Tags    []string  `json:"tags"`
+	Comment string    `json:"comment"`
 }
 
 type Sample struct {
@@ -74,22 +78,22 @@ type Sample struct {
 }
 
 type Result struct {
-	Id                string   `json:"id"`
-	SHA256            string   `json:"sha256"`
-	SchemaVersion     string   `json:"schema_version"`
-	UserId            string   `json:"user_id"`
-	SourceId          []string `json:"source_id"`
-	SourceTag         []string `json:"source_tag"`
-	ServiceName       string   `json:"service_name"`
-	ServiceVersion    string   `json:"service_version"`
-	ServiceConfig     string   `json:"service_config"`
-	ObjectCategory    string   `json:"object_category"`
-	ObjectType        string   `json:"object_type"`
-	Results           string   `json:"results"`
-	Tags              []string `json:"tags"`
-	StartedDateTime   string   `json:"started_date_time"`
-	FinishedDateTime  string   `json:"finished_date_time"`
-	WatchguardStatus  string   `json:"watchguard_status"`
-	WatchguardLog     []string `json:"watchguard_log"`
-	WatchguardVersion string   `json:"watchguard_version"`
+	Id                string    `json:"id"`
+	SHA256            string    `json:"sha256"`
+	SchemaVersion     string    `json:"schema_version"`
+	UserId            string    `json:"user_id"`
+	SourceId          []string  `json:"source_id"`
+	SourceTag         []string  `json:"source_tag"`
+	ServiceName       string    `json:"service_name"`
+	ServiceVersion    string    `json:"service_version"`
+	ServiceConfig     string    `json:"service_config"`
+	ObjectCategory    []string  `json:"object_category"`
+	ObjectType        string    `json:"object_type"`
+	Results           string    `json:"results"`
+	Tags              []string  `json:"tags"`
+	StartedDateTime   time.Time `json:"started_date_time"`
+	FinishedDateTime  time.Time `json:"finished_date_time"`
+	WatchguardStatus  string    `json:"watchguard_status"`
+	WatchguardLog     []string  `json:"watchguard_log"`
+	WatchguardVersion string    `json:"watchguard_version"`
 }
