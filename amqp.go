@@ -87,35 +87,43 @@ func parseMessage(msg amqp.Delivery) {
 		return
 	}
 
-	// since totem sends the results as json encoded string
-	// (which contains json) we need to unmarshal data
-	// and save it this way.
-	var resData map[string]interface{}
-	err = json.Unmarshal([]byte(m.Data), &resData)
-	if err != nil {
-		warning.Printf("Could not decode data: %s\n", m.Data)
-		msg.Nack(false, false)
-		return
-	}
+	/*
+		// This approach has been revised since the data is now
+		// saved as string and not as pure JSON document.
+
+		// since totem sends the results as json encoded string
+		// (which contains json) we need to unmarshal data
+		// and save it this way.
+		var resData interface{}
+		err = json.Unmarshal([]byte(m.Data), &resData)
+		if err != nil {
+			warning.Printf("Could not decode data: %s\n", m.Data)
+			msg.Nack(false, false)
+			return
+		}
+	*/
 
 	// TODO: Add validation to received msg
 	//m.Validate()
 
 	// TODO: Totem needs to send more data
+
 	result := &storerGeneric.Result{
-		Id:                "",
+		Id:                "", //will be filled by the storage engine
 		SHA256:            m.SHA256,
 		SchemaVersion:     "1",
-		UserId:            1,
-		SourceId:          1,
+		UserId:            "NotSend",
+		SourceId:          []string{"NotSend"},
+		SourceTag:         []string{"NotSend"},
 		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 2)[0],
 		ServiceVersion:    "NotSend",
 		ServiceConfig:     "NotSend",
 		ObjectCategory:    "NotSend",
 		ObjectType:        "sample",
-		Results:           resData,
+		Results:           m.Data,
 		Tags:              m.Tags,
-		Date:              fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
+		StartedDateTime:   "NotSend",
+		FinishedDateTime:  fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
 		WatchguardVersion: "NotImplemented",

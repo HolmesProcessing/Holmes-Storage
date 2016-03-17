@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 
 	"github.com/cynexit/Holmes-Storage/storerGeneric"
 
@@ -38,9 +37,8 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	r.ParseMultipartForm(1024 * 1024 * 20)
 
 	// validate inputs
-	userId, err := strconv.Atoi(r.FormValue("user_id"))
-	if err != nil ||
-		userId == 0 ||
+	userId := r.FormValue("user_id")
+	if userId == "" ||
 		r.FormValue("source") == "" ||
 		r.FormValue("name") == "" ||
 		r.FormValue("date") == "" {
@@ -84,11 +82,11 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	}
 
 	submission := &storerGeneric.Submission{
-		SHA256: sha256String,
-		UserId: userId,
-		Source: r.FormValue("source"),
-		Name:   r.FormValue("name"),
-		Date:   r.FormValue("date"),
+		SHA256:  sha256String,
+		UserId:  userId,
+		Source:  r.FormValue("source"),
+		ObjName: r.FormValue("name"),
+		Date:    r.FormValue("date"),
 	}
 
 	sample := &storerGeneric.Sample{

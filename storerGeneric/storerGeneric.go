@@ -48,18 +48,24 @@ type Storer interface {
 }
 
 type Object struct {
-	SHA256 string `json:"sha256"`
-	SHA1   string `json:"sha1"`
-	MD5    string `json:"md5"`
+	SHA256      string   `json:"sha256"`
+	SHA1        string   `json:"sha1"`
+	MD5         string   `json:"md5"`
+	MIME        string   `json:"mime"`
+	Source      []string `json:"source"`
+	ObjName     []string `json:"obj_name"`
+	Submissions []string `json:"submissions"`
 }
 
 type Submission struct {
-	Id     string `json:"_id"`
-	SHA256 string `json:"sha256"`
-	UserId int    `json:"user_id"`
-	Source string `json:"source"`
-	Name   string `json:"name"`
-	Date   string `json:"date"`
+	Id      string   `json:"id"`
+	SHA256  string   `json:"sha256"`
+	UserId  string   `json:"user_id"`
+	Source  string   `json:"source"`
+	Date    string   `json:"date"`
+	ObjName string   `json:"obj_name"`
+	Tags    []string `json:"tags"`
+	Comment string   `json:"comment"`
 }
 
 type Sample struct {
@@ -68,20 +74,22 @@ type Sample struct {
 }
 
 type Result struct {
-	Id                string                 `json:"_id"`
-	SHA256            string                 `json:"sha256"`
-	SchemaVersion     string                 `json:"schema_version"`
-	UserId            int                    `json:"user_id"`
-	SourceId          int                    `json:"source_id"`
-	ServiceName       string                 `json:"service_name"`
-	ServiceVersion    string                 `json:"service_version"`
-	ServiceConfig     string                 `json:"service_config"`
-	ObjectCategory    string                 `json:"object_category"`
-	ObjectType        string                 `json:"object_type"`
-	Results           map[string]interface{} `json:"results"`
-	Tags              []string               `json:"tags"`
-	Date              string                 `json:"date"`
-	WatchguardStatus  string                 `json:"watchguard_status"`
-	WatchguardLog     []string               `json:"watchguard_log"`
-	WatchguardVersion string                 `json:"watchguard_version"`
+	Id                string   `json:"id"`
+	SHA256            string   `json:"sha256"`
+	SchemaVersion     string   `json:"schema_version"`
+	UserId            string   `json:"user_id"`
+	SourceId          []string `json:"source_id"`
+	SourceTag         []string `json:"source_tag"`
+	ServiceName       string   `json:"service_name"`
+	ServiceVersion    string   `json:"service_version"`
+	ServiceConfig     string   `json:"service_config"`
+	ObjectCategory    string   `json:"object_category"`
+	ObjectType        string   `json:"object_type"`
+	Results           string   `json:"results"`
+	Tags              []string `json:"tags"`
+	StartedDateTime   string   `json:"started_date_time"`
+	FinishedDateTime  string   `json:"finished_date_time"`
+	WatchguardStatus  string   `json:"watchguard_status"`
+	WatchguardLog     []string `json:"watchguard_log"`
+	WatchguardVersion string   `json:"watchguard_version"`
 }
