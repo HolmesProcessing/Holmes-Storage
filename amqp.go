@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
 
 	"github.com/streadway/amqp"
 )

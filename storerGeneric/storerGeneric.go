@@ -35,14 +35,6 @@ type Storer interface {
 	StoreSubmission(*Submission) error
 	GetSubmission(string) (*Submission, error)
 
-	// Stores a new sample in the database
-	// return "duplicate" error if already known
-	StoreSample(*Sample) error
-
-	// Gets a sample from the database, identified
-	// by its sha2 string
-	GetSample(string) (*Sample, error)
-
 	// Stores a result in the database
 	// (TODO: return generated Id)
 	StoreResult(*Result) error
@@ -70,11 +62,6 @@ type Submission struct {
 	ObjName string    `json:"obj_name"`
 	Tags    []string  `json:"tags"`
 	Comment string    `json:"comment"`
-}
-
-type Sample struct {
-	SHA256 string `json:"sha256"`
-	Data   []byte `json:"data"` //this will result in a base64 encoded string when marshaled
 }
 
 type Result struct {

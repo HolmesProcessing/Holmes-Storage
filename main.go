@@ -9,16 +9,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/HolmesProcessing/Holmes-Storage/storerCassandra"
-	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
-	"github.com/HolmesProcessing/Holmes-Storage/storerMongoDB"
+	"github.com/cynexit/Holmes-Storage/objStorerGeneric"
+	"github.com/cynexit/Holmes-Storage/storerCassandra"
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
+	"github.com/cynexit/Holmes-Storage/storerMongoDB"
 )
 
 type config struct {
-	Storage  string
-	Database []*storerGeneric.DBConnector
-	LogFile  string
-	LogLevel string
+	Storage     string
+	Database    []*storerGeneric.DBConnector
+	ObjStorage  string
+	ObjDatabase []*storerGeneric.DBConnector
+	LogFile     string
+	LogLevel    string
 
 	AMQP          string
 	Queue         string
@@ -30,7 +33,7 @@ type config struct {
 
 var (
 	mainStorer storerGeneric.Storer
-	objStorer  storerGeneric.Storer
+	objStorer  objStorerGeneric.ObjStorer
 	debug      *log.Logger
 	info       *log.Logger
 	warning    *log.Logger
@@ -39,6 +42,7 @@ var (
 func main() {
 	var (
 		setup    bool
+		objSetup bool
 		confPath string
 		err      error
 	)
@@ -48,6 +52,7 @@ func main() {
 
 	// load config
 	flag.BoolVar(&setup, "setup", false, "Setup the Database")
+	flag.BoolVar(&objSetup, "objSetup", false, "Setup the object storage")
 	flag.StringVar(&confPath, "config", "", "Path to the config file")
 	flag.Parse()
 
@@ -83,6 +88,22 @@ func main() {
 	}
 	info.Println("Storage engine loaded:", conf.Storage)
 
+	// initialize object storage
+	switch conf.ObjStorage {
+	case "S3":
+		objStorer = &ObjStorerS3.ObjStorerS3{}
+	//case "local-fs":
+	//	mainStorer = &objStorerLocalFS{}
+	default:
+		warning.Panicln("Please supply a valid object storage engine!")
+	}
+
+	objStorer, err = objStorer.Initialize(conf.ObjDatabase)
+	if err != nil {
+		warning.Panicln("Object storer initialization failed!", err.Error())
+	}
+	info.Println("Object storage engine loaded:", conf.ObjStorage)
+
 	// check if the user only wants to
 	// initialize the databse.
 	if setup {
@@ -92,6 +113,16 @@ func main() {
 		}
 
 		info.Println("Database was setup without errors.")
+		return // we don't want to execute this any further
+	}
+
+	if objSetup {
+		err = objStorer.Setup()
+		if err != nil {
+			warning.Panicln("Object storer setup failed!", err.Error())
+		}
+
+		info.Println("Object storage was setup without errors.")
 		return // we don't want to execute this any further
 	}
 

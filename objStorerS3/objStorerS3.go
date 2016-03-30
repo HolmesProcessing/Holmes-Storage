@@ -1,41 +1,30 @@
-package StorerCassandra
+package ObjStorerS3
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/gocql/gocql"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 
+	"github.com/cynexit/Holmes-Storage/objStorerGeneric"
 	"github.com/cynexit/Holmes-Storage/storerGeneric"
-	//TODO: Take a look at gocassa, gocqltable, cqlc, cqlr
-	//      and check if these packages would be a good addition.
 )
 
-type StorerCassandra struct {
+type ObjStorerS3 struct {
 	DB *gocql.Session
 }
 
-func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
+func (s ObjStorerS3) Initialize(c []*storerGeneric.DBConnector) (objStorerGeneric.ObjStorer, error) {
 	if len(c) < 1 {
 		return nil, errors.New("Supply at least one node to connect to!")
 	}
 
-	connStrings := make([]string, len(c))
-	for i, elem := range c {
-		if elem.User != "" {
-			connStrings[i] = fmt.Sprintf("%s:%s@%s:%d", elem.User, elem.Password, elem.IP, elem.Port)
-			continue
-		}
-
-		// no auth data given, do anonymous login
-		connStrings[i] = fmt.Sprintf("%s:%d", elem.IP, elem.Port)
-	}
-
-	if c[0].Database == "" {
+	auth, err := aws.GetAuth(c[0].User, c[0].Password)
+	if err != nil {
 		return nil, errors.New("Please supply a database/keyspace to use!")
 	}
 
-	var err error
 	cluster := gocql.NewCluster(connStrings...)
 	cluster.ProtoVersion = 4
 	cluster.Keyspace = c[0].Database
@@ -45,7 +34,7 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 	return s, err
 }
 
-func (s StorerCassandra) Setup() error {
+func (s ObjStorerS3) Setup() error {
 	// test if tables already exist
 	if err := s.DB.Query("SELECT * FROM results LIMIT 1;").Exec(); err == nil {
 		return errors.New("Table results already exists, aborting!")
@@ -117,7 +106,7 @@ func (s StorerCassandra) Setup() error {
 	return nil
 }
 
-func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
+func (s ObjStorerS3) StoreObject(object *storerGeneric.Object) error {
 	err := s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		object.SHA256,
 		object.SHA1,
@@ -131,7 +120,7 @@ func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
 	return err
 }
 
-func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
+func (s ObjStorerS3) GetObject(id string) (*storerGeneric.Object, error) {
 	object := &storerGeneric.Object{}
 
 	uuid, err := gocql.ParseUUID(id)
@@ -152,7 +141,7 @@ func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 	return object, err
 }
 
-func (s StorerCassandra) StoreSubmission(submission *storerGeneric.Submission) error {
+func (s ObjStorerS3) StoreSubmission(submission *storerGeneric.Submission) error {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return err
@@ -172,7 +161,7 @@ func (s StorerCassandra) StoreSubmission(submission *storerGeneric.Submission) e
 	return err
 }
 
-func (s StorerCassandra) GetSubmission(id string) (*storerGeneric.Submission, error) {
+func (s ObjStorerS3) GetSubmission(id string) (*storerGeneric.Submission, error) {
 	submission := &storerGeneric.Submission{}
 
 	uuid, err := gocql.ParseUUID(id)
@@ -194,7 +183,7 @@ func (s StorerCassandra) GetSubmission(id string) (*storerGeneric.Submission, er
 	return submission, err
 }
 
-func (s StorerCassandra) StoreResult(result *storerGeneric.Result) error {
+func (s ObjStorerS3) StoreResult(result *storerGeneric.Result) error {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return err
@@ -224,7 +213,7 @@ func (s StorerCassandra) StoreResult(result *storerGeneric.Result) error {
 	return err
 }
 
-func (s StorerCassandra) GetResult(id string) (*storerGeneric.Result, error) {
+func (s ObjStorerS3) GetResult(id string) (*storerGeneric.Result, error) {
 	result := &storerGeneric.Result{}
 
 	uuid, err := gocql.ParseUUID(id)

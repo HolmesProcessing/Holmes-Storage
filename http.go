@@ -11,7 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
+	"github.com/cynexit/Holmes-Storage/objStorerGeneric"
+	"github.com/cynexit/Holmes-Storage/storerGeneric"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -96,7 +97,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		Date:    date,
 	}
 
-	sample := &storerGeneric.Sample{
+	sample := &objStorerGeneric.Sample{
 		SHA256: sha256String,
 		Data:   fileBytes,
 	}
@@ -114,7 +115,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		return
 	}
 
-	err = mainStorer.StoreSample(sample)
+	err = objStorer.StoreSample(sample)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
@@ -124,7 +125,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 }
 
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	sample, err := mainStorer.GetSample(ps.ByName("sha256"))
+	sample, err := objStorer.GetSample(ps.ByName("sha256"))
 
 	if err != nil {
 		httpFailure(w, r, err)

@@ -1,6 +1,21 @@
 {
-	"Storage": "mongodb",
+	"Storage": "cassandra",
 	"Database": [{
+		"IP":       "10.0.4.52",
+		"Port":     27017,
+		"User":     "account",
+		"Password": "pwd",
+		"Database": "holmes-totem"
+		}, {
+		"IP":       "10.0.4.53",
+		"Port":     27017,
+		"User":     "account",
+		"Password": "pwd",
+		"Database": "holmes-totem"
+		}
+	],
+	"ObjStorage": "S3",
+	"ObjDatabase": [{
 		"IP":       "10.0.4.52",
 		"Port":     27017,
 		"User":     "account",
