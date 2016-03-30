@@ -11,7 +11,7 @@ import (
 
 	"github.com/cynexit/Holmes-Storage/storerCassandra"
 	"github.com/cynexit/Holmes-Storage/storerGeneric"
-	//"github.com/cynexit/Holmes-Storage/storerMongoDB"
+	"github.com/cynexit/Holmes-Storage/storerMongoDB"
 )
 
 type config struct {
@@ -67,8 +67,8 @@ func main() {
 
 	// initialize storage
 	switch conf.Storage {
-	//case "mongodb":
-	//	mainStorer = &storerMongoDB.StorerMongoDB{}
+	case "mongodb":
+		mainStorer = &storerMongoDB.StorerMongoDB{}
 	case "cassandra":
 		mainStorer = &StorerCassandra.StorerCassandra{}
 	//case "mysql":

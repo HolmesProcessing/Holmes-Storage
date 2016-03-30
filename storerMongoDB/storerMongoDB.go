@@ -1,9 +1,11 @@
 package storerMongoDB
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -17,12 +19,14 @@ type StorerMongoDB struct {
 
 // wrapper for generic collections to use native bson _id
 type Submission struct {
-	Id     bson.ObjectId `json:"_id" bson:"_id,omitempty"`
-	SHA256 string        `json:"sha256"`
-	UserId int           `json:"user_id"`
-	Source string        `json:"source"`
-	Name   string        `json:"name"`
-	Date   string        `json:"date"`
+	Id      bson.ObjectId `json:"_id" bson:"_id,omitempty"`
+	SHA256  string        `json:"sha256"`
+	UserId  string        `json:"user_id"`
+	Source  string        `json:"source"`
+	Date    string        `json:"date"`
+	ObjName string        `json:"obj_name"`
+	Tags    []string      `json:"tags"`
+	Comment string        `json:"comment"`
 }
 
 type Sample struct {
@@ -31,22 +35,24 @@ type Sample struct {
 }
 
 type Result struct {
-	Id                bson.ObjectId          `json:"_id" bson:"_id,omitempty"`
-	SHA256            string                 `json:"sha256"`
-	SchemaVersion     string                 `json:"schema_version"`
-	UserId            int                    `json:"user_id"`
-	SourceId          int                    `json:"source_id"`
-	ServiceName       string                 `json:"service_name"`
-	ServiceVersion    string                 `json:"service_version"`
-	ServiceConfig     string                 `json:"service_config"`
-	ObjectCategory    string                 `json:"object_category"`
-	ObjectType        string                 `json:"object_type"`
-	Results           map[string]interface{} `json:"results"`
-	Tags              []string               `json:"tags"`
-	Date              string                 `json:"date"`
-	WatchguardStatus  string                 `json:"watchguard_status"`
-	WatchguardLog     []string               `json:"watchguard_log"`
-	WatchguardVersion string                 `json:"watchguard_version"`
+	Id                bson.ObjectId `json:"_id" bson:"_id,omitempty"`
+	SHA256            string        `json:"sha256"`
+	SchemaVersion     string        `json:"schema_version"`
+	UserId            string        `json:"user_id"`
+	SourceId          []string      `json:"source_id"`
+	SourceTag         []string      `json:"source_tag"`
+	ServiceName       string        `json:"service_name"`
+	ServiceVersion    string        `json:"service_version"`
+	ServiceConfig     string        `json:"service_config"`
+	ObjectCategory    []string      `json:"object_category"`
+	ObjectType        string        `json:"object_type"`
+	Results           interface{}   `json:"results"`
+	Tags              []string      `json:"tags"`
+	StartedDateTime   string        `json:"started_date_time"`
+	FinishedDateTime  string        `json:"finished_date_time"`
+	WatchguardStatus  string        `json:"watchguard_status"`
+	WatchguardLog     []string      `json:"watchguard_log"`
+	WatchguardVersion string        `json:"watchguard_version"`
 }
 
 func (s StorerMongoDB) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
@@ -140,13 +146,17 @@ func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
 }
 
 func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) error {
+	fmt.Println()
+
 	submissionM := &Submission{
-		Id:     bson.NewObjectId(),
-		SHA256: submission.SHA256,
-		UserId: submission.UserId,
-		Source: submission.Source,
-		Name:   submission.Name,
-		Date:   submission.Date,
+		Id:      bson.NewObjectId(),
+		SHA256:  submission.SHA256,
+		UserId:  submission.UserId,
+		Source:  submission.Source,
+		Date:    submission.Date.Format(time.RFC3339),
+		ObjName: submission.ObjName,
+		Tags:    submission.Tags,
+		Comment: submission.Comment,
 	}
 
 	if err := s.DB.C("submissions").Insert(submissionM); err != nil {
@@ -165,13 +175,17 @@ func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, erro
 		return nil, errors.New("ID not found!")
 	}
 
+	t, _ := time.Parse(time.RFC3339, submission.Date)
+
 	return &storerGeneric.Submission{
-		Id:     submission.Id.Hex(),
-		SHA256: submission.SHA256,
-		UserId: submission.UserId,
-		Source: submission.Source,
-		Name:   submission.Name,
-		Date:   submission.Date,
+		Id:      submission.Id.Hex(),
+		SHA256:  submission.SHA256,
+		UserId:  submission.UserId,
+		Source:  submission.Source,
+		Date:    t,
+		ObjName: submission.ObjName,
+		Tags:    submission.Tags,
+		Comment: submission.Comment,
 	}, nil
 }
 
@@ -203,30 +217,34 @@ func (s StorerMongoDB) GetSample(id string) (*storerGeneric.Sample, error) {
 }
 
 func (s StorerMongoDB) StoreResult(result *storerGeneric.Result) error {
+	var resultJSON interface{}
+	err := json.Unmarshal([]byte(result.Results), &resultJSON)
+	if err != nil {
+		return err
+	}
+
 	resultsM := &Result{
 		Id:                bson.NewObjectId(),
 		SHA256:            result.SHA256,
 		SchemaVersion:     result.SchemaVersion,
 		UserId:            result.UserId,
 		SourceId:          result.SourceId,
+		SourceTag:         result.SourceTag,
 		ServiceName:       result.ServiceName,
 		ServiceVersion:    result.ServiceVersion,
 		ServiceConfig:     result.ServiceConfig,
 		ObjectCategory:    result.ObjectCategory,
 		ObjectType:        result.ObjectType,
-		Results:           result.Results,
+		Results:           resultJSON,
 		Tags:              result.Tags,
-		Date:              result.Date,
+		StartedDateTime:   result.StartedDateTime.Format(time.RFC3339),
+		FinishedDateTime:  result.FinishedDateTime.Format(time.RFC3339),
 		WatchguardStatus:  result.WatchguardStatus,
 		WatchguardLog:     result.WatchguardLog,
 		WatchguardVersion: result.WatchguardVersion,
 	}
 
-	if err := s.DB.C("results").Insert(resultsM); err != nil {
-		return err
-	}
-
-	return nil
+	return s.DB.C("results").Insert(resultsM)
 }
 
 func (s StorerMongoDB) GetResult(id string) (*storerGeneric.Result, error) {
@@ -238,20 +256,30 @@ func (s StorerMongoDB) GetResult(id string) (*storerGeneric.Result, error) {
 		return nil, errors.New("ID not found!")
 	}
 
+	resultsBytes, err := json.Marshal(result.Results)
+	if err != nil {
+		return nil, err
+	}
+
+	StartedDateTimeParsed, _ := time.Parse(time.RFC3339, result.StartedDateTime)
+	FinishedDateTimeParsed, _ := time.Parse(time.RFC3339, result.FinishedDateTime)
+
 	return &storerGeneric.Result{
 		Id:                result.Id.Hex(),
 		SHA256:            result.SHA256,
 		SchemaVersion:     result.SchemaVersion,
 		UserId:            result.UserId,
 		SourceId:          result.SourceId,
+		SourceTag:         result.SourceTag,
 		ServiceName:       result.ServiceName,
 		ServiceVersion:    result.ServiceVersion,
 		ServiceConfig:     result.ServiceConfig,
 		ObjectCategory:    result.ObjectCategory,
 		ObjectType:        result.ObjectType,
-		Results:           result.Results,
+		Results:           string(resultsBytes),
 		Tags:              result.Tags,
-		Date:              result.Date,
+		StartedDateTime:   StartedDateTimeParsed,
+		FinishedDateTime:  FinishedDateTimeParsed,
 		WatchguardStatus:  result.WatchguardStatus,
 		WatchguardLog:     result.WatchguardLog,
 		WatchguardVersion: result.WatchguardVersion,
