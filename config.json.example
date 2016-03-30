@@ -1,41 +1,45 @@
 {
-	"Storage": "cassandra",
-	"Database": [{
-		"IP":       "10.0.4.52",
-		"Port":     27017,
-		"User":     "account",
-		"Password": "pwd",
-		"Database": "holmes-totem"
-		}, {
-		"IP":       "10.0.4.53",
-		"Port":     27017,
-		"User":     "account",
-		"Password": "pwd",
-		"Database": "holmes-totem"
-		}
-	],
-	"ObjStorage": "S3",
-	"ObjDatabase": [{
-		"IP":       "10.0.4.52",
-		"Port":     27017,
-		"User":     "account",
-		"Password": "pwd",
-		"Database": "holmes-totem"
-		}, {
-		"IP":       "10.0.4.53",
-		"Port":     27017,
-		"User":     "account",
-		"Password": "pwd",
-		"Database": "holmes-totem"
-		}
-	],
-	"LogFile": "",
-	"LogLevel": "debug",
+    "Storage": "cassandra",
+    "Database": [{
+        "IP":       "10.0.4.52",
+        "Port":     27017,
+        "User":     "account",
+        "Password": "pwd",
+        "Database": "holmes-totem"
+        }, {
+        "IP":       "10.0.4.53",
+        "Port":     27017,
+        "User":     "account",
+        "Password": "pwd",
+        "Database": "holmes-totem"
+        }
+    ],
+    "ObjStorage": "S3",
+    "ObjDatabase": [{
+        "IP":       "10.0.4.52",
+        "Port":     27017,
+        "Region":   "us-east-1",
+        "Key":      "account",
+        "Secret":   "pwd",
+        "Bucket":   "holmes-totem",
+        "DisableSSL":   true
+        }, {
+        "IP":       "10.0.4.52",
+        "Port":     27017,
+        "Region":   "us-east-1",
+        "Key":      "account",
+        "Secret":   "pwd",
+        "Bucket":   "holmes-totem",
+        "DisableSSL":   true
+        }
+    ],
+    "LogFile": "",
+    "LogLevel": "debug",
 
-	"AMQP": "amqp://USER:PASSWORD@HOST:PORT",
-	"Queue": "totem_output",
-	"RoutingKey": "*.result.static.totem",
-	"PrefetchCount": 10,
+    "AMQP": "amqp://USER:PASSWORD@HOST:PORT",
+    "Queue": "totem_output",
+    "RoutingKey": "*.result.static.totem",
+    "PrefetchCount": 10,
 
-	"HTTP": ":8016"
+    "HTTP": ":8016"
 }

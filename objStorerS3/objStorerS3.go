@@ -3,8 +3,9 @@ package ObjStorerS3
 import (
 	"errors"
 
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/cynexit/Holmes-Storage/objStorerGeneric"
 	"github.com/cynexit/Holmes-Storage/storerGeneric"
@@ -19,88 +20,54 @@ func (s ObjStorerS3) Initialize(c []*storerGeneric.DBConnector) (objStorerGeneri
 		return nil, errors.New("Supply at least one node to connect to!")
 	}
 
-	auth, err := aws.GetAuth(c[0].User, c[0].Password)
+	auth, err := aws.GetAuth(c[0].Key, c[0].Secret)
 	if err != nil {
-		return nil, errors.New("Please supply a database/keyspace to use!")
+		return nil, errors.New("Please supply a Key/Secret to use!")
 	}
 
-	cluster := gocql.NewCluster(connStrings...)
-	cluster.ProtoVersion = 4
-	cluster.Keyspace = c[0].Database
-	cluster.Consistency = gocql.Quorum
-	s.DB, err = cluster.CreateSession()
+	s.DB := s3.New(&aws.Config{
+		Credentials: credentials.NewStaticCredentials(
+			c[0].Key,
+			c[0].Secret,
+			""),
+		Endpoint:         aws.String("192.168.45.42:8080"), // Where Riak CS was running (via docker)
+		Region:           aws.String(c[0].Region),
+		S3ForcePathStyle: aws.Bool(true),
+		DisableSSL:       aws.Bool(c[0].DisableSSL),
+	})
+
+	if err := svc.ListBuckets(&s3.ListBucketsInput{}); err != nil {
+		return err
+	}
 
 	return s, err
 }
 
 func (s ObjStorerS3) Setup() error {
-	// test if tables already exist
-	if err := s.DB.Query("SELECT * FROM results LIMIT 1;").Exec(); err == nil {
-		return errors.New("Table results already exists, aborting!")
-	}
-	if err := s.DB.Query("SELECT * FROM objects LIMIT 1;").Exec(); err == nil {
-		return errors.New("Table objects already exists, aborting!")
-	}
-	if err := s.DB.Query("SELECT * FROM submissions LIMIT 1;").Exec(); err == nil {
-		return errors.New("Table submissions already exists, aborting!")
-	}
+	//set bucket variable
+	bucket := c[0].Bucket)
 
-	// create tables
-	tableResults := `CREATE TABLE results(
-		id uuid PRIMARY KEY,
-		sha256 text,
-		schema_version text,
-		user_id text,
-		source_id set<text>,
-		source_tag set<text>,
-		service_name text,
-		service_version text,
-		service_config text,
-		object_category set<text>,
-		object_type text,
-		results text,
-		tags set<text>,
-		started_date_time timestamp,
-		finished_date_time timestamp,
-		watchguard_status text,
-		watchguard_log list<text>,
-		watchguard_version text
-	);
-	`
-	if err := s.DB.Query(tableResults).Exec(); err != nil {
+	// test if the bucket already exists
+	exists, err := s.DB.ListObjects(&s3.ListObjectsInput{
+		Bucket: aws.String(&bucket),
+	})
+	if err != nil {
 		return err
 	}
 
-	tableObjects := `CREATE TABLE objects(
-		sha256 text PRIMARY KEY,
-		sha1 text,
-		md5 text,
-		mime text,
-		source set<text>,
-		obj_name set<text>,
-		submissions set<uuid>
-	);
-	`
-	if err := s.DB.Query(tableObjects).Exec(); err != nil {
-		return err
-	}
+	// create the bucket if it doesn't exist
+	if exists == nil {
+		result, err := s.DB.CreateBucket(&s3.CreateBucketInput{
+			Bucket: aws.String(&bucket),
+		})
+		if err != nil {
+			return err
+		}
 
-	tableSubmissions := `CREATE TABLE submissions(
-		id uuid PRIMARY KEY,
-		sha256 text,
-		user_id text,
-		source text,
-		date timestamp,
-		obj_name text,
-		tags set<text>,
-		comment text
-	);
-	`
-	if err := s.DB.Query(tableSubmissions).Exec(); err != nil {
-		return err
+		if err = s.DB.WaitUntilBucketExists(&s3.HeadBucketInput{Bucket: &bucket}); err != nil {
+			return err
+		}
 	}
-
-	//TODO: create indexes on special fields
 
 	return nil
 }
