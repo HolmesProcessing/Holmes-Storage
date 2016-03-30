@@ -6,7 +6,7 @@ import (
 
 	"github.com/gocql/gocql"
 
-	"github.com/cynexit/Holmes-Storage/storerGeneric"
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 	//TODO: Take a look at gocassa, gocqltable, cqlc, cqlr
 	//      and check if these packages would be a good addition.
 )

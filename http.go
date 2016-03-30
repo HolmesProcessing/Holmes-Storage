@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cynexit/Holmes-Storage/storerGeneric"
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 
 	"github.com/julienschmidt/httprouter"
 )
