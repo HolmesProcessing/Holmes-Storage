@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/cynexit/Holmes-Storage/objStorerGeneric"
+	"github.com/cynexit/Holmes-Storage/objStorerS3"
 	"github.com/cynexit/Holmes-Storage/storerCassandra"
 	"github.com/cynexit/Holmes-Storage/storerGeneric"
 	"github.com/cynexit/Holmes-Storage/storerMongoDB"

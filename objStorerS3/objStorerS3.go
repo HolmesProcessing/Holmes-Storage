@@ -2,7 +2,6 @@ package ObjStorerS3
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/s3"
@@ -12,7 +11,7 @@ import (
 )
 
 type ObjStorerS3 struct {
-	DB *gocql.Session
+	DB *s3.S3
 }
 
 func (s ObjStorerS3) Initialize(c []*storerGeneric.DBConnector) (objStorerGeneric.ObjStorer, error) {
@@ -106,141 +105,10 @@ func (s ObjStorerS3) Setup() error {
 	return nil
 }
 
-func (s ObjStorerS3) StoreObject(object *storerGeneric.Object) error {
-	err := s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		object.SHA256,
-		object.SHA1,
-		object.MD5,
-		object.MIME,
-		object.Source,
-		object.ObjName,
-		object.Submissions,
-	).Exec()
-
-	return err
+func (s ObjStorerS3) StoreSample(*objStorerGeneric.Sample) error {
+	return nil
 }
 
-func (s ObjStorerS3) GetObject(id string) (*storerGeneric.Object, error) {
-	object := &storerGeneric.Object{}
-
-	uuid, err := gocql.ParseUUID(id)
-	if err != nil {
-		return object, err
-	}
-
-	err = s.DB.Query(`SELECT * FROM objects WHERE id = ? LIMIT 1`, uuid).Scan(
-		&object.SHA256,
-		&object.SHA1,
-		&object.MD5,
-		&object.MIME,
-		&object.Source,
-		&object.ObjName,
-		&object.Submissions,
-	)
-
-	return object, err
-}
-
-func (s ObjStorerS3) StoreSubmission(submission *storerGeneric.Submission) error {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return err
-	}
-
-	err = s.DB.Query(`INSERT INTO submissions (id, sha256, user_id, source, date, obj_name, tags, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id,
-		submission.SHA256,
-		submission.UserId,
-		submission.Source,
-		submission.Date,
-		submission.ObjName,
-		submission.Tags,
-		submission.Comment,
-	).Exec()
-
-	return err
-}
-
-func (s ObjStorerS3) GetSubmission(id string) (*storerGeneric.Submission, error) {
-	submission := &storerGeneric.Submission{}
-
-	uuid, err := gocql.ParseUUID(id)
-	if err != nil {
-		return submission, err
-	}
-
-	err = s.DB.Query(`SELECT * FROM submissions WHERE id = ? LIMIT 1`, uuid).Scan(
-		&submission.Id,
-		&submission.SHA256,
-		&submission.UserId,
-		&submission.Source,
-		&submission.Date,
-		&submission.ObjName,
-		&submission.Tags,
-		&submission.Comment,
-	)
-
-	return submission, err
-}
-
-func (s ObjStorerS3) StoreResult(result *storerGeneric.Result) error {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return err
-	}
-
-	err = s.DB.Query(`INSERT INTO results (id, sha256, schema_version, user_id, source_id, source_tag, service_name, service_version, service_config, object_category, object_type, results, tags, started_date_time, finished_date_time, watchguard_status, watchguard_log, watchguard_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id,
-		result.SHA256,
-		result.SchemaVersion,
-		result.UserId,
-		result.SourceId,
-		result.SourceTag,
-		result.ServiceName,
-		result.ServiceVersion,
-		result.ServiceConfig,
-		result.ObjectCategory,
-		result.ObjectType,
-		result.Results,
-		result.Tags,
-		result.StartedDateTime,
-		result.FinishedDateTime,
-		result.WatchguardStatus,
-		result.WatchguardLog,
-		result.WatchguardVersion,
-	).Exec()
-
-	return err
-}
-
-func (s ObjStorerS3) GetResult(id string) (*storerGeneric.Result, error) {
-	result := &storerGeneric.Result{}
-
-	uuid, err := gocql.ParseUUID(id)
-	if err != nil {
-		return result, err
-	}
-
-	err = s.DB.Query(`SELECT * FROM results WHERE id = ? LIMIT 1`, uuid).Scan(
-		&result.Id,
-		&result.SHA256,
-		&result.SchemaVersion,
-		&result.UserId,
-		&result.SourceId,
-		&result.SourceTag,
-		&result.ServiceName,
-		&result.ServiceVersion,
-		&result.ServiceConfig,
-		&result.ObjectCategory,
-		&result.ObjectType,
-		&result.Results,
-		&result.Tags,
-		&result.StartedDateTime,
-		&result.FinishedDateTime,
-		&result.WatchguardStatus,
-		&result.WatchguardLog,
-		&result.WatchguardVersion,
-	)
-
-	return result, err
+func (s ObjStorerS3) GetSample(string) (*objStorerGeneric.Sample, error) {
+	return nil, nil
 }
