@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
+
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 
 	"github.com/streadway/amqp"
 )
@@ -85,42 +86,56 @@ func parseMessage(msg amqp.Delivery) {
 		return
 	}
 
-	// since totem sends the results as json encoded string
-	// (which contains json) we need to unmarshal data
-	// and save it this way.
-	var resData map[string]interface{}
-	err = json.Unmarshal([]byte(m.Data), &resData)
-	if err != nil {
-		warning.Printf("Could not decode data: %s\n", m.Data)
-		msg.Nack(false, false)
-		return
-	}
+	/*
+		// This approach has been revised since the data is now
+		// saved as string and not as pure JSON document.
+
+		// since totem sends the results as json encoded string
+		// (which contains json) we need to unmarshal data
+		// and save it this way.
+		var resData interface{}
+		err = json.Unmarshal([]byte(m.Data), &resData)
+		if err != nil {
+			warning.Printf("Could not decode data: %s\n", m.Data)
+			msg.Nack(false, false)
+			return
+		}
+	*/
 
 	// TODO: Add validation to received msg
 	//m.Validate()
 
 	// TODO: Totem needs to send more data
-	result := &dbResults{
-		Id:                "",
+
+	result := &storerGeneric.Result{
+		Id:                "", //will be filled by the storage engine
 		SHA256:            m.SHA256,
 		SchemaVersion:     "1",
-		UserId:            1,
-		SourceId:          1,
+		UserId:            "NotSend",
+		SourceId:          []string{"NotSend"},
+		SourceTag:         []string{"NotSend"},
 		ServiceName:       strings.SplitN(msg.RoutingKey, ".", 2)[0],
 		ServiceVersion:    "NotSend",
 		ServiceConfig:     "NotSend",
-		ObjectCategory:    "NotSend",
+		ObjectCategory:    []string{"NotSend"},
 		ObjectType:        "sample",
-		Results:           resData,
+		Results:           m.Data,
 		Tags:              m.Tags,
-		Date:              fmt.Sprintf("%v", time.Now().Format(time.RFC3339)),
+		StartedDateTime:   time.Now(),
+		FinishedDateTime:  time.Now(),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
 		WatchguardVersion: "NotImplemented",
 	}
 
-	err = myStorer.StoreResult(result)
+	err = mainStorer.StoreResult(result)
 	if err != nil {
+		if strings.Contains(err.Error(), "Size must be between 0 and 16793600") {
+			warning.Println("Message to large, dropped!", err.Error())
+			msg.Ack(false)
+			return
+		}
+
 		warning.Println("Failed to safe result:", err.Error(), "SHA256:", m.SHA256)
 		msg.Nack(false, true)
 		return

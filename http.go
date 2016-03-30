@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
+	"time"
+
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -36,9 +38,8 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	r.ParseMultipartForm(1024 * 1024 * 20)
 
 	// validate inputs
-	userId, err := strconv.Atoi(r.FormValue("user_id"))
-	if err != nil ||
-		userId == 0 ||
+	userId := r.FormValue("user_id")
+	if userId == "" ||
 		r.FormValue("source") == "" ||
 		r.FormValue("name") == "" ||
 		r.FormValue("date") == "" {
@@ -75,39 +76,45 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	md5String := fmt.Sprintf("%x", hMD5.Sum(nil))
 
 	// create structs for db
-	object := &dbObjects{
+	object := &storerGeneric.Object{
 		SHA256: sha256String,
 		SHA1:   sha1String,
 		MD5:    md5String,
 	}
 
-	submission := &dbSubmissions{
-		SHA256: sha256String,
-		UserId: userId,
-		Source: r.FormValue("source"),
-		Name:   r.FormValue("name"),
-		Date:   r.FormValue("date"),
+	date, err := time.Parse(time.RFC3339, r.FormValue("date"))
+	if err != nil {
+		httpFailure(w, r, err)
+		return
 	}
 
-	sample := &dbSamples{
+	submission := &storerGeneric.Submission{
+		SHA256:  sha256String,
+		UserId:  userId,
+		Source:  r.FormValue("source"),
+		ObjName: r.FormValue("name"),
+		Date:    date,
+	}
+
+	sample := &storerGeneric.Sample{
 		SHA256: sha256String,
 		Data:   fileBytes,
 	}
 
 	// save structs to db
-	err = myStorer.StoreObject(object)
+	err = mainStorer.StoreObject(object)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
 	}
 
-	err = myStorer.StoreSubmission(submission)
+	err = mainStorer.StoreSubmission(submission)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
 	}
 
-	err = myStorer.StoreSample(sample)
+	err = mainStorer.StoreSample(sample)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
@@ -117,7 +124,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 }
 
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	sample, err := myStorer.GetSample(ps.ByName("sha256"))
+	sample, err := mainStorer.GetSample(ps.ByName("sha256"))
 
 	if err != nil {
 		httpFailure(w, r, err)
