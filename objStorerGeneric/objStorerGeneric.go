@@ -30,6 +30,7 @@ type ObjStorer interface {
 	GetSample(string) (*Sample, error)
 }
 
+// TODO: switch from json to probably raw bytes
 type Sample struct {
 	SHA256 string `json:"sha256"`
 	Data   []byte `json:"data"` //this will result in a base64 encoded string when marshaled
