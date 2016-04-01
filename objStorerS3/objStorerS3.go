@@ -86,14 +86,17 @@ func (s ObjStorerS3) StoreSample(sample *objStorerGeneric.Sample) error {
 	return err
 }
 
-func (s ObjStorerS3) GetSample(string) (*objStorerGeneric.Sample, error) {
+func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 
 	sample := &storerGeneric.Sample{}
 
-	&sample.Data, err := svc.GetObject(&s3.GetObjectInput{
+	out, err := s.DB.GetObject(&s3.GetObjectInput{
 		Bucket: &s.Bucket
-		Key:    &sample.SHA256,
+		Key:    id,
 	})
+
+	&sample.Data = out.Body
+	&sample.SHA256 = id
 
 	return sample, err
 }
