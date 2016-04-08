@@ -41,5 +41,6 @@
     "RoutingKey": "*.result.static.totem",
     "PrefetchCount": 10,
 
-    "HTTP": ":8016"
+    "HTTP": ":8016",
+    "ExtendedMime": true
 }

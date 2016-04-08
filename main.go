@@ -29,7 +29,8 @@ type config struct {
 	RoutingKey    string
 	PrefetchCount int
 
-	HTTP string
+	HTTP         string
+	ExtendedMime bool
 }
 
 var (
@@ -128,7 +129,7 @@ func main() {
 	}
 
 	// start webserver for HTTP API
-	go initHTTP(conf.HTTP)
+	go initHTTP(conf.HTTP, conf.ExtendedMime)
 
 	// start to listen for new restults
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
