@@ -10,7 +10,7 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/cynexit/Holmes-Storage/storerGeneric"
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 )
 
 type StorerMongoDB struct {

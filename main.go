@@ -9,11 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cynexit/Holmes-Storage/objStorerGeneric"
-	"github.com/cynexit/Holmes-Storage/objStorerS3"
-	"github.com/cynexit/Holmes-Storage/storerCassandra"
-	"github.com/cynexit/Holmes-Storage/storerGeneric"
-	"github.com/cynexit/Holmes-Storage/storerMongoDB"
+	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
+	"github.com/HolmesProcessing/Holmes-Storage/objStorerS3"
+	"github.com/HolmesProcessing/Holmes-Storage/storerCassandra"
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
+	"github.com/HolmesProcessing/Holmes-Storage/storerMongoDB"
 )
 
 type config struct {
