@@ -22,12 +22,6 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 
 	connStrings := make([]string, len(c))
 	for i, elem := range c {
-		if elem.User != "" {
-			connStrings[i] = fmt.Sprintf("%s:%s@%s:%d", elem.User, elem.Password, elem.IP, elem.Port)
-			continue
-		}
-
-		// no auth data given, do anonymous login
 		connStrings[i] = fmt.Sprintf("%s:%d", elem.IP, elem.Port)
 	}
 
@@ -37,6 +31,10 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 
 	var err error
 	cluster := gocql.NewCluster(connStrings...)
+	cluster.Authenticator = gocql.PasswordAuthenticator{
+		Username: c[0].User,
+		Password: c[0].Password,
+	}
 	cluster.ProtoVersion = 4
 	cluster.Keyspace = c[0].Database
 	cluster.Consistency = gocql.Quorum

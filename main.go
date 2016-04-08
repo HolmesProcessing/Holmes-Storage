@@ -20,7 +20,7 @@ type config struct {
 	Storage     string
 	Database    []*storerGeneric.DBConnector
 	ObjStorage  string
-	ObjDatabase []*storerGeneric.DBConnector
+	ObjDatabase []*objStorerGeneric.ObjDBConnector
 	LogFile     string
 	LogLevel    string
 
