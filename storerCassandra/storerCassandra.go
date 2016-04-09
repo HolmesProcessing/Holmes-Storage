@@ -22,12 +22,6 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 
 	connStrings := make([]string, len(c))
 	for i, elem := range c {
-		if elem.User != "" {
-			connStrings[i] = fmt.Sprintf("%s:%s@%s:%d", elem.User, elem.Password, elem.IP, elem.Port)
-			continue
-		}
-
-		// no auth data given, do anonymous login
 		connStrings[i] = fmt.Sprintf("%s:%d", elem.IP, elem.Port)
 	}
 
@@ -37,6 +31,10 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 
 	var err error
 	cluster := gocql.NewCluster(connStrings...)
+	cluster.Authenticator = gocql.PasswordAuthenticator{
+		Username: c[0].User,
+		Password: c[0].Password,
+	}
 	cluster.ProtoVersion = 4
 	cluster.Keyspace = c[0].Database
 	cluster.Consistency = gocql.Quorum
@@ -112,21 +110,56 @@ func (s StorerCassandra) Setup() error {
 		return err
 	}
 
+	tableSubmissionsIndex := `CREATE index submissions_sha256 on submissions(sha256);`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+
 	//TODO: create indexes on special fields
 
 	return nil
 }
 
 func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
-	err := s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		object.SHA256,
-		object.SHA1,
-		object.MD5,
-		object.MIME,
-		object.Source,
-		object.ObjName,
-		object.Submissions,
-	).Exec()
+	submissions, err := s.GetSubmissionsByObject(object.SHA256)
+	if err != nil {
+		return err
+	}
+
+	l := len(submissions)
+	if l == 0 {
+		return errors.New("Tried to store an object which was never submited!")
+	}
+
+	source := make([]string, l)
+	obj_name := make([]string, l)
+	submission_ids := make([]string, l)
+	for k, v := range submissions {
+		source[k] = v.Source
+		obj_name[k] = v.ObjName
+		submission_ids[k] = v.Id
+	}
+
+	// just one submission implies a new object
+	// more than one implies an update.
+	if l == 1 {
+		err = s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			object.SHA256,
+			object.SHA1,
+			object.MD5,
+			object.MIME,
+			source,
+			obj_name,
+			submission_ids,
+		).Exec()
+	} else {
+		err = s.DB.Query(`UPDATE objects SET source = ?,  obj_name = ?, submissions = ? WHERE sha256 = ?`,
+			source,
+			obj_name,
+			submission_ids,
+			object.SHA256,
+		).Exec()
+	}
 
 	return err
 }
@@ -139,7 +172,7 @@ func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 		return object, err
 	}
 
-	err = s.DB.Query(`SELECT * FROM objects WHERE id = ? LIMIT 1`, uuid).Scan(
+	err = s.DB.Query(`SELECT * FROM objects WHERE sha256 = ? LIMIT 1`, uuid).Scan(
 		&object.SHA256,
 		&object.SHA1,
 		&object.MD5,
@@ -194,12 +227,28 @@ func (s StorerCassandra) GetSubmission(id string) (*storerGeneric.Submission, er
 	return submission, err
 }
 
-func (s StorerCassandra) StoreSample(sample *storerGeneric.Sample) error {
-	return errors.New("Sample storage is not supported via Cassandra!")
-}
+func (s StorerCassandra) GetSubmissionsByObject(sha256 string) ([]*storerGeneric.Submission, error) {
+	submissions := []*storerGeneric.Submission{}
+	submission := &storerGeneric.Submission{}
 
-func (s StorerCassandra) GetSample(id string) (*storerGeneric.Sample, error) {
-	return nil, errors.New("Sample storage is not supported via Cassandra!")
+	iter := s.DB.Query(`SELECT id, sha256, user_id, source, date, obj_name, tags, comment FROM submissions WHERE sha256 = ?`, sha256).Iter()
+	for iter.Scan(
+		&submission.Id,
+		&submission.SHA256,
+		&submission.UserId,
+		&submission.Source,
+		&submission.Date,
+		&submission.ObjName,
+		&submission.Tags,
+		&submission.Comment,
+	) {
+		submissions = append(submissions, submission)
+		submission = &storerGeneric.Submission{}
+	}
+
+	err := iter.Close()
+
+	return submissions, err
 }
 
 func (s StorerCassandra) StoreResult(result *storerGeneric.Result) error {

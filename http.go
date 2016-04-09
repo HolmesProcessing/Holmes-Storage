@@ -11,9 +11,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rakyll/magicmime"
 )
 
 type apiResponse struct {
@@ -22,7 +24,13 @@ type apiResponse struct {
 	Result       interface{} `json:",omitempty"`
 }
 
-func initHTTP(httpBinding string) {
+var (
+	extendedMime bool
+)
+
+func initHTTP(httpBinding string, eMime bool) {
+	extendedMime = eMime
+
 	router := httprouter.New()
 
 	router.GET("/samples/:sha256", httpSampleGet)
@@ -75,11 +83,35 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	hMD5.Write(fileBytes)
 	md5String := fmt.Sprintf("%x", hMD5.Sum(nil))
 
+	// get mimetype
+	mimeType := ""
+	if !extendedMime {
+		mimeType = http.DetectContentType(fileBytes)
+	} else {
+		if err = magicmime.Open(magicmime.MAGIC_ERROR); err != nil {
+			httpFailure(w, r, errors.New("ExtendedMime is activated but libmagic is not installed!"))
+			return
+		}
+
+		mimeType, err = magicmime.TypeByBuffer(fileBytes)
+		if err != nil {
+			magicmime.Close()
+			httpFailure(w, r, errors.New("libmagic failed with "+err.Error()))
+			return
+		}
+
+		magicmime.Close()
+	}
+
 	// create structs for db
 	object := &storerGeneric.Object{
-		SHA256: sha256String,
-		SHA1:   sha1String,
-		MD5:    md5String,
+		SHA256:      sha256String,
+		SHA1:        sha1String,
+		MD5:         md5String,
+		MIME:        mimeType,
+		Source:      []string{""},
+		ObjName:     []string{""},
+		Submissions: []string{""},
 	}
 
 	date, err := time.Parse(time.RFC3339, r.FormValue("date"))
@@ -92,29 +124,32 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		SHA256:  sha256String,
 		UserId:  userId,
 		Source:  r.FormValue("source"),
-		ObjName: r.FormValue("name"),
 		Date:    date,
+		ObjName: r.FormValue("name"),
+		Tags:    r.URL.Query()["tags[]"],
+		Comment: r.FormValue("comment"),
 	}
 
-	sample := &storerGeneric.Sample{
+	sample := &objStorerGeneric.Sample{
 		SHA256: sha256String,
 		Data:   fileBytes,
 	}
 
 	// save structs to db
-	err = mainStorer.StoreObject(object)
-	if err != nil {
-		httpFailure(w, r, err)
-		return
-	}
-
+	// submission needs to be saved first!
 	err = mainStorer.StoreSubmission(submission)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
 	}
 
-	err = mainStorer.StoreSample(sample)
+	err = mainStorer.StoreObject(object)
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	err = objStorer.StoreSample(sample)
 	if err != nil {
 		httpFailure(w, r, err)
 		return
@@ -124,7 +159,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 }
 
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	sample, err := mainStorer.GetSample(ps.ByName("sha256"))
+	sample, err := objStorer.GetSample(ps.ByName("sha256"))
 
 	if err != nil {
 		httpFailure(w, r, err)

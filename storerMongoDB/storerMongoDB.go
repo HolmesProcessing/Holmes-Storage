@@ -29,11 +29,6 @@ type Submission struct {
 	Comment string        `json:"comment"`
 }
 
-type Sample struct {
-	SHA256 string      `json:"sha256"`
-	Data   bson.Binary `json:"data"`
-}
-
 type Result struct {
 	Id                bson.ObjectId `json:"_id" bson:"_id,omitempty"`
 	SHA256            string        `json:"sha256"`
@@ -186,33 +181,6 @@ func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, erro
 		ObjName: submission.ObjName,
 		Tags:    submission.Tags,
 		Comment: submission.Comment,
-	}, nil
-}
-
-func (s StorerMongoDB) StoreSample(sample *storerGeneric.Sample) error {
-	sampleM := &Sample{
-		SHA256: sample.SHA256,
-		Data:   bson.Binary{Kind: 0, Data: sample.Data},
-	}
-
-	if err := s.DB.C("samples").Insert(sampleM); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s StorerMongoDB) GetSample(id string) (*storerGeneric.Sample, error) {
-	var sampleM Sample
-
-	s.DB.C("samples").Find(bson.M{"sha256": id}).One(&sampleM)
-	if sampleM.SHA256 == "" {
-		return nil, errors.New("Not found")
-	}
-
-	return &storerGeneric.Sample{
-		SHA256: sampleM.SHA256,
-		Data:   sampleM.Data.Data,
 	}, nil
 }
 
