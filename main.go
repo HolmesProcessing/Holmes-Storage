@@ -11,6 +11,7 @@ import (
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerS3"
+	"github.com/HolmesProcessing/Holmes-Storage/objStorerLocalFS"
 	"github.com/HolmesProcessing/Holmes-Storage/storerCassandra"
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/storerMongoDB"
@@ -94,8 +95,8 @@ func main() {
 	switch conf.ObjStorage {
 	case "S3":
 		objStorer = &ObjStorerS3.ObjStorerS3{}
-	//case "local-fs":
-	//	mainStorer = &objStorerLocalFS{}
+	case "local-fs":
+		objStorer = &ObjStorerLocalFS.ObjStorerLocalFS{}
 	default:
 		warning.Panicln("Please supply a valid object storage engine!")
 	}
@@ -115,7 +116,6 @@ func main() {
 		}
 
 		info.Println("Database was setup without errors.")
-		return // we don't want to execute this any further
 	}
 
 	if objSetup {
@@ -125,6 +125,9 @@ func main() {
 		}
 
 		info.Println("Object storage was setup without errors.")
+	}
+	
+	if setup || objSetup {
 		return // we don't want to execute this any further
 	}
 
