@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -167,7 +168,7 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 }
 
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	sample, err := objStorer.GetSample(ps.ByName("sha256"))
+	sample, err := objStorer.GetSample(strings.ToLower(ps.ByName("sha256")))
 
 	if err != nil {
 		httpFailure(w, r, err)

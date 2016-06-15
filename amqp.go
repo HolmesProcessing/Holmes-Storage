@@ -107,9 +107,11 @@ func parseMessage(msg amqp.Delivery) {
 
 	// TODO: Totem needs to send more data
 
+	// TODO: Totem needs to send hashes lowercase
+
 	result := &storerGeneric.Result{
-		Id:                "", //will be filled by the storage engine
-		SHA256:            m.SHA256,
+		Id:                "",                        //will be filled by the storage engine
+		SHA256:            strings.ToLower(m.SHA256), //totem currently send the hash all upper case
 		SchemaVersion:     "1",
 		UserId:            "NotSend",
 		SourceId:          []string{"NotSend"},
