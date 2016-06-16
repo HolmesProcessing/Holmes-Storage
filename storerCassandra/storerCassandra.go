@@ -110,12 +110,43 @@ func (s StorerCassandra) Setup() error {
 		return err
 	}
 
+	//TODO: add complex SASI indexes when supported by Cassandra
+
+	// create SASI indexes
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx ON holmes_testing.results (finished_date_time) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode' : 'SPARSE'};`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_service_name_idx ON holmes_testing.results (service_name) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_sha256_idx ON holmes_testing.results (sha256) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_started_date_time_idx ON holmes_testing.results (started_date_time) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode' : 'SPARSE'};`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	// End indexes for results
+
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX objects_md5_idx ON holmes_testing.objects (md5) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX objects_mime_idx ON holmes_testing.objects (mime) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'analyzed' : 'true', 'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'tokenization_enable_stemming' : 'false', 'tokenization_locale' : 'en', 'tokenization_normalize_lowercase' : 'true', 'tokenization_skip_stop_words' : 'true'};`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	// End indexes for objects
+
+	//TODO: create SASI indexes for submissions
 	tableSubmissionsIndex := `CREATE index submissions_sha256 on submissions(sha256);`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-
-	//TODO: create indexes on special fields
+	// End indexes for submissions
 
 	return nil
 }
