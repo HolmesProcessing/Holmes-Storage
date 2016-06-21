@@ -75,8 +75,7 @@ func (s StorerCassandra) Setup() error {
 		watchguard_status text,
 		watchguard_log list<text>,
 		watchguard_version text
-	);
-	`
+	);`
 	if err := s.DB.Query(tableResults).Exec(); err != nil {
 		return err
 	}
@@ -89,8 +88,7 @@ func (s StorerCassandra) Setup() error {
 		source set<text>,
 		obj_name set<text>,
 		submissions set<uuid>
-	);
-	`
+	);`
 	if err := s.DB.Query(tableObjects).Exec(); err != nil {
 		return err
 	}
@@ -104,8 +102,7 @@ func (s StorerCassandra) Setup() error {
 		obj_name text,
 		tags set<text>,
 		comment text
-	);
-	`
+	);`
 	if err := s.DB.Query(tableSubmissions).Exec(); err != nil {
 		return err
 	}
@@ -113,54 +110,57 @@ func (s StorerCassandra) Setup() error {
 	//TODO: add complex SASI indexes on tags, object_category, etc when supported by Cassandra
 	//TODO: add indexes for other entries (watchguard_status, user_id, service_version) under results when totem catches up
 
-	// Create SASI indexes for results
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx 
+	// Add SASI indexes for results
+	tableResultsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx 
 		ON holmes_testing.results (finished_date_time) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
 			'mode' : 'SPARSE'
 		};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX results_service_name_idx 
+
+	tableResultsIndex = `CREATE CUSTOM INDEX results_service_name_idx 
 		ON holmes_testing.results (service_name) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX results_sha256_idx 
+
+	tableResultsIndex = `CREATE CUSTOM INDEX results_sha256_idx 
 		ON holmes_testing.results (sha256) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
+
+	tableResultsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
 		ON holmes_testing.results (started_date_time) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
 			'mode' : 'SPARSE'
 		};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 //////////	
 // WARNING: Uncomment only if needed. This can increase physical storage costs by ~40% with 1 million samples and 4 Services.
-//	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_results_idx ON holmes_testing.results (results) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'analyzed' : 'true', 'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'tokenization_enable_stemming' : 'false', 'tokenization_locale' : 'en', 'tokenization_normalize_lowercase' : 'true', 'tokenization_skip_stop_words' : 'true'};`
-//	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+//	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx ON holmes_testing.results (results) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'analyzed' : 'true', 'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'tokenization_enable_stemming' : 'false', 'tokenization_locale' : 'en', 'tokenization_normalize_lowercase' : 'true', 'tokenization_skip_stop_words' : 'true'};`
+//	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 //		return err
 //	}
 //////////
-	// End indexes for results
 
-	// Create SASI indexes for objects
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX objects_md5_idx 
+	// Add SASI indexes for objects
+	tableObjectsIndex = `CREATE CUSTOM INDEX objects_md5_idx 
 		ON holmes_testing.objects (md5) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX objects_mime_idx 
+
+	tableObjectsIndex = `CREATE CUSTOM INDEX objects_mime_idx 
 		ON holmes_testing.objects (mime) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
@@ -171,12 +171,11 @@ func (s StorerCassandra) Setup() error {
 			'tokenization_normalize_lowercase' : 'true', 
 			'tokenization_skip_stop_words' : 'true'
 		};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
 		return err
 	}
-	// End indexes for objects
 
-	//TODO: create SASI indexes for submissions
+	// Add SASI indexes for submissions
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_comment_idx 
 		ON holmes_testing.submissions (comment) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
@@ -191,6 +190,7 @@ func (s StorerCassandra) Setup() error {
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
+
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx 
 		ON holmes_testing.submissions (date) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
@@ -200,6 +200,7 @@ func (s StorerCassandra) Setup() error {
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
+
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_obj_name_idx 
 		ON holmes_testing.submissions (obj_name) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
@@ -209,25 +210,27 @@ func (s StorerCassandra) Setup() error {
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
+
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_sha256_idx 
 		ON holmes_testing.submissions (sha256) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
+
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_source_idx 
 		ON holmes_testing.submissions (source) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
+
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_user_id_idx 
 		ON holmes_testing.submissions (user_id) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	// End indexes for submissions
 
 	return nil
 }
