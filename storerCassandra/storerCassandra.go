@@ -114,19 +114,33 @@ func (s StorerCassandra) Setup() error {
 	//TODO: add indexes for other entries (watchguard_status, user_id, service_version) under results when totem catches up
 
 	// Create SASI indexes for results
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx ON holmes_testing.results (finished_date_time) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode' : 'SPARSE'};`
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx 
+		ON holmes_testing.results (finished_date_time) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'mode' : 'SPARSE'
+		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_service_name_idx ON holmes_testing.results (service_name) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX results_service_name_idx 
+		ON holmes_testing.results (service_name) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_sha256_idx ON holmes_testing.results (sha256) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX results_sha256_idx 
+		ON holmes_testing.results (sha256) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX results_started_date_time_idx ON holmes_testing.results (started_date_time) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode' : 'SPARSE'};`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
+		ON holmes_testing.results (started_date_time) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'mode' : 'SPARSE'
+		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
@@ -140,38 +154,76 @@ func (s StorerCassandra) Setup() error {
 	// End indexes for results
 
 	// Create SASI indexes for objects
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX objects_md5_idx ON holmes_testing.objects (md5) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX objects_md5_idx 
+		ON holmes_testing.objects (md5) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX objects_mime_idx ON holmes_testing.objects (mime) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'analyzed' : 'true', 'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'tokenization_enable_stemming' : 'false', 'tokenization_locale' : 'en', 'tokenization_normalize_lowercase' : 'true', 'tokenization_skip_stop_words' : 'true'};`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX objects_mime_idx 
+		ON holmes_testing.objects (mime) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'analyzed' : 'true', 
+			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
+			'tokenization_enable_stemming' : 'false', 
+			'tokenization_locale' : 'en', 
+			'tokenization_normalize_lowercase' : 'true', 
+			'tokenization_skip_stop_words' : 'true'
+		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 	// End indexes for objects
 
 	//TODO: create SASI indexes for submissions
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx ON holmes_testing.submissions (comment) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'analyzed' : 'true', 'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'tokenization_enable_stemming' : 'true', 'tokenization_locale' : 'en', 'tokenization_normalize_lowercase' : 'true', 'tokenization_skip_stop_words' : 'true'};`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_comment_idx 
+		ON holmes_testing.submissions (comment) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'analyzed' : 'true', 
+			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
+			'tokenization_enable_stemming' : 'true', 
+			'tokenization_locale' : 'en', 
+			'tokenization_normalize_lowercase' : 'true', 
+			'tokenization_skip_stop_words' : 'true'
+		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_date_idx ON holmes_testing.submissions (date) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode' : 'SPARSE'};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}	
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_obj_name_idx ON holmes_testing.submissions (obj_name) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode' : 'CONTAINS'};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_sha256_idx ON holmes_testing.submissions (sha256) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx 
+		ON holmes_testing.submissions (date) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'mode' : 'SPARSE'
+		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_source_idx ON holmes_testing.submissions (source) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_obj_name_idx 
+		ON holmes_testing.submissions (obj_name) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'mode' : 'CONTAINS'
+		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_user_id_idx ON holmes_testing.submissions (user_id) USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_sha256_idx 
+		ON holmes_testing.submissions (sha256) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_source_idx 
+		ON holmes_testing.submissions (source) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
+		return err
+	}
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_user_id_idx 
+		ON holmes_testing.submissions (user_id) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}

@@ -3,28 +3,31 @@
 ## Overview
 
 
+## Dependencies
+
+
 ## Compilation
 
 
 ## Installation
 
 
-## Dependencies
-
-
 ### Supported Databases
 Holmes-Storage supports multiple databases and splits them into two categories: Object Stores and Document Stores. This was done to provide users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Store. 
 
 #### Object Stores
-
+We support three primary object storage databases. We recommend S3 for large deployments.
+- Local File System
+- S3 compatible
+- (Soon) MongoDB Gridfs
 
 #### Document Stores
-
+We support two primary object storage databases. We recommend a Cassandra cluster for large deployments.
+- Cassandra
+- MongoDB
 
 ##### Cassandra 
 Holmes-Storage supports a single or cluster installation of Cassandra version 3.5.x and higher. The version requirement is because of the significant improvement in system performance when leveraging the newly introduced [SASIIndex](https://github.com/apache/cassandra/blob/trunk/doc/SASI.md) for secondary indexing. We highly recommend deploying Cassandra as a cluster with a minimum of three Cassandra nodes in production environments.
-
-###### Installation
 
 ###### Configuration
 
