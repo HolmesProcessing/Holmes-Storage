@@ -153,7 +153,7 @@ func (s StorerCassandra) Setup() error {
 //////////
 
 	// Add SASI indexes for objects
-	tableObjectsIndex = `CREATE CUSTOM INDEX objects_md5_idx 
+	tableObjectsIndex := `CREATE CUSTOM INDEX objects_md5_idx 
 		ON holmes_testing.objects (md5) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
@@ -176,7 +176,7 @@ func (s StorerCassandra) Setup() error {
 	}
 
 	// Add SASI indexes for submissions
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_comment_idx 
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx 
 		ON holmes_testing.submissions (comment) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
