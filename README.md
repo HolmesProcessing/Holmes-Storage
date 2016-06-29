@@ -1,4 +1,4 @@
-# Holmes-Storage: A Storage Planner for Holmes Processing
+# Holmes-Storage: A Storage Planner for Holmes Processing [![Build Status](https://travis-ci.org/HolmesProcessing/Holmes-Storage.svg?branch=master)](https://travis-ci.org/HolmesProcessing/Holmes-Storage)
 
 ## Overview
 
