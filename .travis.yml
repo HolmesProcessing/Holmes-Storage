@@ -1,0 +1,23 @@
+language: go
+
+go:
+  - 1.6.2
+
+addons:
+  apt:
+    packages:
+      - libmagic-dev
+
+# this fixes go imports
+before_install:
+  - RepoName=`basename $PWD`; SrcDir=`dirname $PWD`; DestDir="`dirname $SrcDir`/HolmesProcessing"
+  - if [[ "$SrcDir" != "$DestDir" ]]; then mv "$SrcDir" "$DestDir"; cd ../../HolmesProcessing/$RepoName; export TRAVIS_BUILD_DIR=`dirname $TRAVIS_BUILD_DIR`/$RepoName; fi 
+
+install:
+  - go get github.com/gocql/gocql
+  - go get github.com/aws/aws-sdk-go
+  - go get github.com/streadway/amqp
+  - go get gopkg.in/mgo.v2
+  - go get gopkg.in/mgo.v2/bson
+  - go get github.com/julienschmidt/httprouter
+  - go get github.com/rakyll/magicmime
