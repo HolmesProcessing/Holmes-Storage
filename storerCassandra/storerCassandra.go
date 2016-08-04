@@ -275,6 +275,9 @@ func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
 			object.SHA256,
 		).Exec()
 	}
+	object.Source = source
+	object.ObjName = obj_name
+	object.Submissions = submission_ids
 
 	return err
 }
