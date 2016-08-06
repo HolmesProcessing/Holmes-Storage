@@ -146,7 +146,18 @@ func (s StorerCassandra) Setup() error {
 	}
 //////////	
 // WARNING: Uncomment only if needed. This can increase physical storage costs by ~40% with 1 million samples and 4 Services.
-//	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx ON holmes_testing.results (results) USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'analyzed' : 'true', 'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'tokenization_enable_stemming' : 'false', 'tokenization_locale' : 'en', 'tokenization_normalize_lowercase' : 'true', 'tokenization_skip_stop_words' : 'true'};`
+//	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx 
+//	ON holmes_testing.results (results) 
+//	USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+//	WITH OPTIONS = {
+//		'analyzed' : 'true', 
+//		'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
+//		'tokenization_enable_stemming' : 'false', 
+//		'tokenization_locale' : 'en', 
+//		'tokenization_normalize_lowercase' : 'true', 
+//		'tokenization_skip_stop_words' : 'true',
+//		'max_compaction_flush_memory_in_mb': '512'
+//		};`
 //	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 //		return err
 //	}

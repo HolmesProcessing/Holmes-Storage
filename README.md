@@ -46,7 +46,8 @@ WITH OPTIONS = {
 	'tokenization_enable_stemming' : 'false', 
 	'tokenization_locale' : 'en', 
 	'tokenization_normalize_lowercase' : 'true', 
-	'tokenization_skip_stop_words' : 'true'
+	'tokenization_skip_stop_words' : 'true',
+	'max_compaction_flush_memory_in_mb': '512'
 };
 
 ```
