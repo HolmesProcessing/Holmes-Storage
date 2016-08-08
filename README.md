@@ -33,21 +33,21 @@ Holmes-Storage supports a single or cluster installation of Cassandra version 3.
 
 
 ###### Configuration
-New Cassandra clusters will need to be configured before Cassandra is started for the first time. We have highlighted a few of the configuration options that are critical or will increate performance. For additional options, please see the [Cassandra installition guide](http://cassandra.apache.org/doc/latest/getting_started/configuring.html#main-runtime-properties). 
+New Cassandra clusters will need to be configured before Cassandra is started for the first time. We have highlighted a few of the configuration options that are critical or will improve performance. For additional options, please see the [Cassandra instillation guide](http://cassandra.apache.org/doc/latest/getting_started/configuring.html#main-runtime-properties). 
 
 To edit these values, please open the Cassandra configuration file in your favorite editor. The Cassandra configuration file is typically located in `/etc/cassandra/cassandra.yaml`. 
 
 The Cassandra "cluster_name" must be set and the same on all nodes. The name you select does not much matter but again it should be identical on all nodes.
 `cluster_name: 'Holmes Processing'`
 
-Cassandra 3.x has an improved token allocation algorthim. As such, 256 is not necessary and should be decreased to 64 or 128 tokens. 
+Cassandra 3.x has an improved token allocation algorithm. As such, 256 is not necessary and should be decreased to 64 or 128 tokens. 
 `num_tokens: 128`
 
-You should populate the "seeds" value with the IP addresses for at least 2 additional Cassandra nodes.
+You should populate the "seeds" value with the IP addresses for at least two additional Cassandra nodes.
 `seeds: <ip node1>,<ip node2>`
 
 The "listen_address" should be set to the external IP address for the current Cassandra node.
-`listen_address`
+`listen_address: <external ip address>`
 
 ###### Best Practices
 On a new cluster, Holmes-Storage will setup the database in an optimal way for the average user. However, we recommend Cassandra users to please read the [Cassandra's Operations website](http://wiki.apache.org/cassandra/Operations) for more information Cassandra best practices.  Additionally, it is critical that the Cassandra cluster be regularly repaired using `nodetool repair` command. We recommend that this is executed on every node, one at a time, at least once a weekly.
