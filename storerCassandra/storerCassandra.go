@@ -113,10 +113,7 @@ func (s StorerCassandra) Setup() error {
 	// Add SASI indexes for results
 	tableResultsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx 
 		ON holmes_testing.results (finished_date_time) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'mode' : 'SPARSE'
-		};`
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
@@ -137,10 +134,7 @@ func (s StorerCassandra) Setup() error {
 
 	tableResultsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
 		ON holmes_testing.results (started_date_time) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'mode' : 'SPARSE'
-		};`
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
@@ -204,10 +198,7 @@ func (s StorerCassandra) Setup() error {
 
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx 
 		ON holmes_testing.submissions (date) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'mode' : 'SPARSE'
-		};`
+		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
