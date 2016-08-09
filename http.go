@@ -38,6 +38,8 @@ func initHTTP(httpBinding string, eMime bool) {
 
 	router.GET("/samples/:sha256", httpSampleGet)
 	router.PUT("/samples/", httpSampleStore)
+	router.GET("/config/*path", httpConfigGet)
+	router.POST("/config/*path", httpConfigStore)
 
 	http.ListenAndServe(httpBinding, router)
 }
@@ -180,6 +182,49 @@ func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprint(w, string(sample.Data))
 }
+
+func httpConfigStore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	path := strings.ToLower(ps.ByName("path"))
+	file, _, err := r.FormFile("config")
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	config := &storerGeneric.Config{
+		Path: path,
+		FileContents: string(fileBytes),
+	}
+
+	err = mainStorer.StoreConfig(config)
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	httpSuccess(w, r, path)
+}
+
+func httpConfigGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	config, err := mainStorer.GetConfig(strings.ToLower(ps.ByName("path")))
+
+	if err != nil {
+		httpFailure(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename="+config.Path)
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprint(w, string(config.FileContents))
+}
+
 
 func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 	j, err := json.Marshal(apiResponse{
