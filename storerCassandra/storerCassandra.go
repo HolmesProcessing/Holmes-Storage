@@ -74,7 +74,8 @@ func (s StorerCassandra) Setup() error {
 		finished_date_time timestamp,
 		watchguard_status text,
 		watchguard_log list<text>,
-		watchguard_version text
+		watchguard_version text,
+		comment text
 	);`
 	if err := s.DB.Query(tableResults).Exec(); err != nil {
 		return err
@@ -111,7 +112,22 @@ func (s StorerCassandra) Setup() error {
 	//TODO: add indexes for other entries (watchguard_status, user_id, service_version) under results when totem catches up
 
 	// Add SASI indexes for results
-	tableResultsIndex := `CREATE CUSTOM INDEX results_finished_date_time_idx 
+	tableResultsIndex := `CREATE CUSTOM INDEX results_comment_idx 
+		ON holmes_testing.results (comment) 
+		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+		WITH OPTIONS = {
+			'analyzed' : 'true', 
+			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
+			'tokenization_enable_stemming' : 'true', 
+			'tokenization_locale' : 'en', 
+			'tokenization_normalize_lowercase' : 'true', 
+			'tokenization_skip_stop_words' : 'true'
+		};`
+	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
+		return err
+	}
+
+	tableResultsIndex = `CREATE CUSTOM INDEX results_finished_date_time_idx 
 		ON holmes_testing.results (finished_date_time) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
