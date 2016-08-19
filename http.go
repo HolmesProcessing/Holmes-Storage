@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"path/filepath"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
@@ -216,11 +217,11 @@ func httpConfigGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 	config, err := mainStorer.GetConfig(strings.ToLower(ps.ByName("path")))
 
 	if err != nil {
-		httpFailure(w, r, err)
+		httpErrorCode(w, r, err, 404)
 		return
 	}
 
-	w.Header().Set("Content-Disposition", "attachment; filename="+config.Path)
+	w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(config.Path))
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprint(w, string(config.FileContents))
 }
@@ -239,6 +240,21 @@ func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(j)
+}
+
+func httpErrorCode(w http.ResponseWriter, r *http.Request, err error, code int) {
+	j, err := json.Marshal(apiResponse{
+		ResponseCode: 0,
+		Failure:      err.Error(),
+	})
+
+	if err != nil {
+		err500(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	http.Error(w, string(j), code)
 }
 
 func httpFailure(w http.ResponseWriter, r *http.Request, err error) {
