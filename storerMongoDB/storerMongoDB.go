@@ -253,3 +253,19 @@ func (s StorerMongoDB) GetResult(id string) (*storerGeneric.Result, error) {
 		WatchguardVersion: result.WatchguardVersion,
 	}, nil
 }
+
+func (s StorerMongoDB) StoreConfig(config *storerGeneric.Config) error {
+	err := s.DB.C("config").Insert(config)
+	return err
+}
+
+func (s StorerMongoDB) GetConfig(path string) (*storerGeneric.Config, error) {
+	var config storerGeneric.Config
+	s.DB.C("config").Find(bson.M{"path": path}).One(&config)
+
+	if config.Path == "" {
+		return nil, errors.New("Not found")
+	}
+
+	return &config, nil
+}

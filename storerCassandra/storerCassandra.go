@@ -54,6 +54,9 @@ func (s StorerCassandra) Setup() error {
 	if err := s.DB.Query("SELECT * FROM submissions LIMIT 1;").Exec(); err == nil {
 		return errors.New("Table submissions already exists, aborting!")
 	}
+	if err := s.DB.Query("SELECT * FROM config LIMIT 1;").Exec(); err == nil {
+		return errors.New("Table config already exists, aborting!")
+	}
 
 	// create tables
 	tableResults := `CREATE TABLE results(
@@ -105,6 +108,14 @@ func (s StorerCassandra) Setup() error {
 		comment text
 	);`
 	if err := s.DB.Query(tableSubmissions).Exec(); err != nil {
+		return err
+	}
+
+	tableConfig := `CREATE TABLE config(
+		path text PRIMARY KEY,
+		file_contents text
+	);`
+	if err := s.DB.Query(tableConfig).Exec(); err != nil {
 		return err
 	}
 
@@ -447,4 +458,24 @@ func (s StorerCassandra) GetResult(id string) (*storerGeneric.Result, error) {
 	)
 
 	return result, err
+}
+
+func (s StorerCassandra) StoreConfig(config *storerGeneric.Config) error {
+	err := s.DB.Query(`INSERT INTO config (path, file_contents) VALUES (?, ?)`,
+		config.Path,
+		config.FileContents,
+	).Exec()
+
+	return err
+}
+
+func (s StorerCassandra) GetConfig(path string) (*storerGeneric.Config, error) {
+	config := &storerGeneric.Config{}
+
+	err := s.DB.Query(`SELECT * FROM config WHERE path = ? LIMIT 1`, path).Scan(
+		&config.Path,
+		&config.FileContents,
+	)
+
+	return config, err
 }
