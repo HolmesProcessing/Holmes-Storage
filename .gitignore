@@ -2,7 +2,6 @@
 *.o
 *.a
 *.so
-Holmes-Storage
 
 # Folders
 _obj
@@ -24,6 +23,15 @@ _testmain.go
 *.test
 *.prof
 
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
+###
+# Holmes Processing Specific
+###
 
-config.json
+# Configuration files
+*.conf
+
+# Executables
+Holmes-Storage
