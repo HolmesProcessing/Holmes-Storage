@@ -15,9 +15,9 @@ type StorerCassandra struct {
 	DB *gocql.Session
 }
 
-func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
+func (s storerCassandra) PrepareCluster(c []*storerGeneric.DBConnector) (gocql.Cluster, error) {
 	if len(c) < 1 {
-		return nil, errors.New("Supply at least one node to connect to!")
+		return errors.New("Supply at least one node to connect to!")
 	}
 
 	connStrings := make([]string, len(c))
@@ -26,7 +26,7 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 	}
 
 	if c[0].Database == "" {
-		return nil, errors.New("Please supply a database/keyspace to use!")
+		return errors.New("Please supply a database/keyspace to use!")
 	}
 
 	var err error
@@ -36,6 +36,33 @@ func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGener
 		Password: c[0].Password,
 	}
 	cluster.ProtoVersion = 4
+}
+
+func (s StorerCassandra) CreateDB(c []*storerGeneric.DBConnector) error {
+	cluster, err := s.PrepareCluster(c)
+	if err != nil {
+		return err
+	}
+	cluster.Keyspace = "system"
+	s.DB, err = cluster.CreateSession()
+	if err != nil{
+		return err
+	}
+	query := fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s WITH replication = 
+		{'class': 'SimpleStrategy',
+		'replication_factor':1};`, c[0].Database)
+	if err := s.DB.Query(query).Exec(); err != nil {
+		return err
+	}
+	s.DB.Close()
+	return nil
+}
+
+func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
+	cluster, err := s.PrepareCluster(c)
+	if err != nil {
+		return err
+	}
 	cluster.Keyspace = c[0].Database
 	cluster.Consistency = gocql.Quorum
 	s.DB, err = cluster.CreateSession()
@@ -124,7 +151,7 @@ func (s StorerCassandra) Setup() error {
 
 	// Add SASI indexes for results
 	tableResultsIndex := `CREATE CUSTOM INDEX results_comment_idx 
-		ON holmes_testing.results (comment) 
+		ON results (comment) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
 			'analyzed' : 'true', 
@@ -139,28 +166,28 @@ func (s StorerCassandra) Setup() error {
 	}
 
 	tableResultsIndex = `CREATE CUSTOM INDEX results_finished_date_time_idx 
-		ON holmes_testing.results (finished_date_time) 
+		ON results (finished_date_time) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableResultsIndex = `CREATE CUSTOM INDEX results_service_name_idx 
-		ON holmes_testing.results (service_name) 
+		ON results (service_name) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableResultsIndex = `CREATE CUSTOM INDEX results_sha256_idx 
-		ON holmes_testing.results (sha256) 
+		ON results (sha256) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableResultsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
-		ON holmes_testing.results (started_date_time) 
+		ON results (started_date_time) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
@@ -168,7 +195,7 @@ func (s StorerCassandra) Setup() error {
 //////////	
 // WARNING: Uncomment only if needed. This can increase physical storage costs by ~40% with 1 million samples and 4 Services.
 //	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx 
-//	ON holmes_testing.results (results) 
+//	ON results (results) 
 //	USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 //	WITH OPTIONS = {
 //		'analyzed' : 'true', 
@@ -186,14 +213,14 @@ func (s StorerCassandra) Setup() error {
 
 	// Add SASI indexes for objects
 	tableObjectsIndex := `CREATE CUSTOM INDEX objects_md5_idx 
-		ON holmes_testing.objects (md5) 
+		ON objects (md5) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableObjectsIndex = `CREATE CUSTOM INDEX objects_mime_idx 
-		ON holmes_testing.objects (mime) 
+		ON objects (mime) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
 			'analyzed' : 'true', 
@@ -209,7 +236,7 @@ func (s StorerCassandra) Setup() error {
 
 	// Add SASI indexes for submissions
 	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx 
-		ON holmes_testing.submissions (comment) 
+		ON submissions (comment) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
 			'analyzed' : 'true', 
@@ -224,14 +251,14 @@ func (s StorerCassandra) Setup() error {
 	}
 
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx 
-		ON holmes_testing.submissions (date) 
+		ON submissions (date) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_obj_name_idx 
-		ON holmes_testing.submissions (obj_name) 
+		ON submissions (obj_name) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
 		WITH OPTIONS = {
 			'mode' : 'CONTAINS'
@@ -241,21 +268,21 @@ func (s StorerCassandra) Setup() error {
 	}
 
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_sha256_idx 
-		ON holmes_testing.submissions (sha256) 
+		ON submissions (sha256) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_source_idx 
-		ON holmes_testing.submissions (source) 
+		ON submissions (source) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
 	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_user_id_idx 
-		ON holmes_testing.submissions (user_id) 
+		ON submissions (user_id) 
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err

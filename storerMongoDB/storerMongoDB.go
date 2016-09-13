@@ -50,6 +50,11 @@ type Result struct {
 	WatchguardVersion string        `json:"watchguard_version"`
 }
 
+func (s StorerMongoDB) CreateDB(c []*storerGeneric.DBConnector) error {
+	// Nothing to do here, since mongo creates the database on the fly
+	return nil
+}
+
 func (s StorerMongoDB) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
 	if len(c) < 1 {
 		return nil, errors.New("Supply at least one node to connect to!")

@@ -21,6 +21,9 @@ type DBConnector struct {
 }
 
 type Storer interface {
+	// Cretes the database. this is separate from Initialize()
+	// because Initialize() requires the database to exist
+	CreateDB(c []*DBConnector) error
 	// Initializes the connection and the Storer object
 	// ip, port, user, passwort, db name
 	Initialize([]*DBConnector) (Storer, error)

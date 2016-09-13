@@ -85,6 +85,14 @@ func main() {
 		warning.Panicln("Please supply a valid storage engine!")
 	}
 
+	if setup {
+		// Create the DB.
+		err := mainStorer.CreateDB(conf.Database)
+		if err != nil {
+			warning.Println("Storer setup failed!", err.Error())
+		}
+	}
+
 	mainStorer, err = mainStorer.Initialize(conf.Database)
 	if err != nil {
 		warning.Panicln("Storer initialization failed!", err.Error())
