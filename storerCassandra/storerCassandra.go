@@ -15,9 +15,9 @@ type StorerCassandra struct {
 	DB *gocql.Session
 }
 
-func (s storerCassandra) PrepareCluster(c []*storerGeneric.DBConnector) (gocql.Cluster, error) {
+func (s StorerCassandra) PrepareCluster(c []*storerGeneric.DBConnector) (*gocql.ClusterConfig, error) {
 	if len(c) < 1 {
-		return errors.New("Supply at least one node to connect to!")
+		return nil, errors.New("Supply at least one node to connect to!")
 	}
 
 	connStrings := make([]string, len(c))
@@ -26,7 +26,7 @@ func (s storerCassandra) PrepareCluster(c []*storerGeneric.DBConnector) (gocql.C
 	}
 
 	if c[0].Database == "" {
-		return errors.New("Please supply a database/keyspace to use!")
+		return nil, errors.New("Please supply a database/keyspace to use!")
 	}
 
 	var err error
@@ -36,6 +36,7 @@ func (s storerCassandra) PrepareCluster(c []*storerGeneric.DBConnector) (gocql.C
 		Password: c[0].Password,
 	}
 	cluster.ProtoVersion = 4
+	return cluster, err
 }
 
 func (s StorerCassandra) CreateDB(c []*storerGeneric.DBConnector) error {
@@ -61,7 +62,7 @@ func (s StorerCassandra) CreateDB(c []*storerGeneric.DBConnector) error {
 func (s StorerCassandra) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
 	cluster, err := s.PrepareCluster(c)
 	if err != nil {
-		return err
+		return s, err
 	}
 	cluster.Keyspace = c[0].Database
 	cluster.Consistency = gocql.Quorum
