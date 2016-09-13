@@ -5,13 +5,13 @@
         "Port":     27017,
         "User":     "account",
         "Password": "pwd",
-        "Database": "holmes-totem"
+        "Database": "holmes_totem"
         }, {
         "IP":       "127.0.0.1",
         "Port":     27017,
         "User":     "account",
         "Password": "pwd",
-        "Database": "holmes-totem"
+        "Database": "holmes_totem"
         }
     ],
     "ObjStorage": "S3",
@@ -21,7 +21,7 @@
         "Region":   "us-east-1",
         "Key":      "account",
         "Secret":   "pwd",
-        "Bucket":   "holmes-totem",
+        "Bucket":   "holmes_totem",
         "DisableSSL":   true
         }, {
         "IP":       "127.0.0.1",
@@ -29,7 +29,7 @@
         "Region":   "us-east-1",
         "Key":      "account",
         "Secret":   "pwd",
-        "Bucket":   "holmes-totem",
+        "Bucket":   "holmes_totem",
         "DisableSSL":   true
         }
     ],

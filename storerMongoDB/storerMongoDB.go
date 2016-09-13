@@ -50,6 +50,11 @@ type Result struct {
 	WatchguardVersion string        `json:"watchguard_version"`
 }
 
+func (s StorerMongoDB) CreateDB(c []*storerGeneric.DBConnector) error {
+	// Nothing to do here, since mongo creates the database on the fly
+	return nil
+}
+
 func (s StorerMongoDB) Initialize(c []*storerGeneric.DBConnector) (storerGeneric.Storer, error) {
 	if len(c) < 1 {
 		return nil, errors.New("Supply at least one node to connect to!")
@@ -87,7 +92,7 @@ func (s StorerMongoDB) Setup() error {
 	// db.runCommand( { shardcollection : "holmes.results", key : { "object_id" : 1 } } );
 
 	shaIndex := mgo.Index{
-		Key:        []string{"SHA256"},
+		Key:        []string{"sha256"},
 		Unique:     true,
 		DropDups:   true,
 		Background: false,
@@ -122,11 +127,21 @@ func (s StorerMongoDB) Setup() error {
 }
 
 func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) error {
-	if err := s.DB.C("objects").Insert(object); err != nil {
-		return err
+	// gather submissions and update source, objname, submissions
+	submissions := s.GetSubmissionsByObject(object.SHA256)
+	l := len(submissions)
+	object.Source = make([]string, l)
+	object.ObjName = make([]string, l)
+	object.Submissions = make([]string, l)
+	
+	for k, v := range submissions {
+		object.Source[k] = v.Source
+		object.ObjName[k] = v.ObjName
+		object.Submissions[k] = v.Id.String()
 	}
 
-	return nil
+	_, err := s.DB.C("objects").Upsert(bson.M{"sha256":object.SHA256}, object)
+	return err
 }
 
 func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
@@ -182,6 +197,13 @@ func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, erro
 		Tags:    submission.Tags,
 		Comment: submission.Comment,
 	}, nil
+}
+
+func (s StorerMongoDB) GetSubmissionsByObject(sha256 string) ([]*Submission) {
+	submissions := []*Submission{}
+	s.DB.C("submissions").Find(bson.M{"sha256": sha256}).All(&submissions)
+	return submissions
+
 }
 
 func (s StorerMongoDB) StoreResult(result *storerGeneric.Result) error {
