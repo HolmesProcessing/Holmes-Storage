@@ -50,8 +50,7 @@ func (s StorerCassandra) CreateDB(c []*storerGeneric.DBConnector) error {
 		return err
 	}
 	query := fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s WITH replication = 
-		{'class': 'SimpleStrategy',
-		'replication_factor':3};`, c[0].Database)
+		{'class': 'NetworkTopologyStrategy', 'dc1': '2'};`, c[0].Database)
 	if err := s.DB.Query(query).Exec(); err != nil {
 		return err
 	}
