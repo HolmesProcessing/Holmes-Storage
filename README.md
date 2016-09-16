@@ -10,7 +10,16 @@
 
 
 ## Installation
-
+* Copy the default configuration file located in config/storage.conf.example and change it according to your needs.
+* Setup the database by calling
+`./Holmes-Storage --config <path_to_config> --setup`
+This will create the configured keyspace if it does not exist yet. For cassandra, the default keyspace will use the following replication options: `{'class': 'NetworkTopologyStrategy', 'dc': '2'}`. If you want to change this, you can do so after the setup by connecting with `cqlsh` and changing it manually. For more information about that we refer to the official documentation of cassandra [Cassandra Replication](http://cassandra.apache.org/doc/latest/architecture/dynamo.html) [Altering Keyspace](https://docs.datastax.com/en/cql/3.1/cql/cql_reference/alter_keyspace_r.html)
+You can also create the keyspace with different replication options  before executing the setup and the setup won't overwrite that.
+The setup will also create the necessary tables and indices.
+* Setup the object storer by calling
+`./Holmes-Storage --config <path_to_config> --objSetup`
+* Execute storage by calling
+`./Holmes-Storage --config <path_to_config>
 
 ### Supported Databases
 Holmes-Storage supports multiple databases and splits them into two categories: Object Stores and Document Stores. This was done to provide users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Store. 
