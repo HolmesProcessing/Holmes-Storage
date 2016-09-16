@@ -19,7 +19,7 @@ The setup will also create the necessary tables and indices.
 * Setup the object storer by calling
 `./Holmes-Storage --config <path_to_config> --objSetup`
 * Execute storage by calling
-`./Holmes-Storage --config <path_to_config>
+`./Holmes-Storage --config <path_to_config>`
 
 ### Supported Databases
 Holmes-Storage supports multiple databases and splits them into two categories: Object Stores and Document Stores. This was done to provide users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Store. 
