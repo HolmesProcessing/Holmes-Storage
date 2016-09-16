@@ -2,34 +2,34 @@
     "Storage": "cassandra",
     "Database": [{
         "IP":       "127.0.0.1",
-        "Port":     27017,
+        "Port":     9042,
         "User":     "account",
         "Password": "pwd",
-        "Database": "holmes_totem"
+        "Database": "holmes"
         }, {
         "IP":       "127.0.0.1",
-        "Port":     27017,
+        "Port":     9042,
         "User":     "account",
         "Password": "pwd",
-        "Database": "holmes_totem"
+        "Database": "holmes"
         }
     ],
     "ObjStorage": "S3",
     "ObjDatabase": [{
         "IP":       "127.0.0.1",
-        "Port":     27017,
+        "Port":     8080,
         "Region":   "us-east-1",
         "Key":      "account",
         "Secret":   "pwd",
-        "Bucket":   "holmes_totem",
+        "Bucket":   "holmes",
         "DisableSSL":   true
         }, {
         "IP":       "127.0.0.1",
-        "Port":     27017,
+        "Port":     8080,
         "Region":   "us-east-1",
         "Key":      "account",
         "Secret":   "pwd",
-        "Bucket":   "holmes_totem",
+        "Bucket":   "holmes",
         "DisableSSL":   true
         }
     ],
