@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
-	"path/filepath"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
@@ -138,8 +138,16 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		Source:  r.FormValue("source"),
 		Date:    date,
 		ObjName: r.FormValue("name"),
-		Tags:    r.URL.Query()["tags[]"],
+		Tags:    nil,
 		Comment: r.FormValue("comment"),
+	}
+	tags := r.FormValue("tags")
+	if tags != "" {
+		err = json.Unmarshal([]byte(tags), &submission.Tags)
+		if err != nil {
+			httpFailure(w, r, err)
+			return
+		}
 	}
 
 	sample := &objStorerGeneric.Sample{
@@ -200,7 +208,7 @@ func httpConfigStore(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 	}
 
 	config := &storerGeneric.Config{
-		Path: path,
+		Path:         path,
 		FileContents: string(fileBytes),
 	}
 
@@ -225,7 +233,6 @@ func httpConfigGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprint(w, string(config.FileContents))
 }
-
 
 func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 	j, err := json.Marshal(apiResponse{
