@@ -138,16 +138,8 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		Source:  r.FormValue("source"),
 		Date:    date,
 		ObjName: r.FormValue("name"),
-		Tags:    nil,
+		Tags:    r.Form["tags"],
 		Comment: r.FormValue("comment"),
-	}
-	tags := r.FormValue("tags")
-	if tags != "" {
-		err = json.Unmarshal([]byte(tags), &submission.Tags)
-		if err != nil {
-			httpFailure(w, r, err)
-			return
-		}
 	}
 
 	sample := &objStorerGeneric.Sample{
