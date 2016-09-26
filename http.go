@@ -76,6 +76,11 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		return
 	}
 
+	if len(fileBytes) == 0 {
+		httpFailure(w, r, errors.New("empty file"))
+		return
+	}
+
 	// generate the necessary hashes
 	hSHA256 := sha256.New()
 	hSHA256.Write(fileBytes)
@@ -95,24 +100,12 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		mimeType = http.DetectContentType(fileBytes)
 	} else {
 
-		mimeLock.Lock()
-
-		if err = magicmime.Open(magicmime.MAGIC_ERROR); err != nil {
-			httpFailure(w, r, errors.New("ExtendedMime is activated but libmagic is not installed!"))
-			mimeLock.Unlock()
-			return
-		}
-
-		mimeType, err = magicmime.TypeByBuffer(fileBytes)
+		mimeType, err = getMimeFromMagic(fileBytes, 0)
 		if err != nil {
-			magicmime.Close()
 			httpFailure(w, r, errors.New("libmagic failed with "+err.Error()))
-			mimeLock.Unlock()
 			return
 		}
 
-		magicmime.Close()
-		mimeLock.Unlock()
 	}
 
 	// create structs for db
@@ -242,6 +235,8 @@ func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 }
 
 func httpErrorCode(w http.ResponseWriter, r *http.Request, err error, code int) {
+	warning.Println("httpFailureEC:", err.Error(), code)
+
 	j, err := json.Marshal(apiResponse{
 		ResponseCode: 0,
 		Failure:      err.Error(),
@@ -257,6 +252,8 @@ func httpErrorCode(w http.ResponseWriter, r *http.Request, err error, code int) 
 }
 
 func httpFailure(w http.ResponseWriter, r *http.Request, err error) {
+	warning.Println("httpFailure:", err.Error())
+
 	j, err := json.Marshal(apiResponse{
 		ResponseCode: 0,
 		Failure:      err.Error(),
@@ -272,6 +269,39 @@ func httpFailure(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func err500(w http.ResponseWriter, r *http.Request, err interface{}) {
-	warning.Println(err)
+	warning.Println("500:", err)
 	http.Error(w, "Server error occured!", 500)
+}
+
+func getMimeFromMagic(fileBytes []byte, try int) (mimeType string, err error) {
+	defer func() {
+		magicmime.Close()
+		mimeLock.Unlock()
+
+		if err := recover(); err != nil {
+			warning.Println("magicMime paniced")
+			time.Sleep(time.Second)
+			mimeType, err = getMimeFromMagic(fileBytes, try+1)
+		}
+	}()
+
+	// if we tried to get the mimeType 3 times but paniced we'll return a
+	// static string
+	if try >= 3 {
+		err = nil
+		mimeType = "N/A"
+		return
+	}
+
+	mimeLock.Lock()
+
+	err = magicmime.Open(magicmime.MAGIC_ERROR)
+
+	if err != nil {
+		err = errors.New("ExtendedMime is activated but libmagic is not installed!")
+		return
+	}
+
+	mimeType, err = magicmime.TypeByBuffer(fileBytes)
+	return
 }
