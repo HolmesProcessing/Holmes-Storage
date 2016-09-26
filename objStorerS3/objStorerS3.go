@@ -24,7 +24,7 @@ func (s ObjStorerS3) Initialize(c []*objStorerGeneric.ObjDBConnector) (objStorer
 		return nil, errors.New("Supply at least one node to connect to!")
 	}
 
-	s.DB = s3.New(session.New(&aws.Config{
+	s3sess, err := session.NewSession(&aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			c[0].Key,
 			c[0].Secret,
@@ -33,14 +33,19 @@ func (s ObjStorerS3) Initialize(c []*objStorerGeneric.ObjDBConnector) (objStorer
 		Region:           aws.String(c[0].Region),
 		S3ForcePathStyle: aws.Bool(true),
 		DisableSSL:       aws.Bool(c[0].DisableSSL),
-	}))
+	})
 
+	if err != nil {
+		return nil, err //same as Must(...)
+	}
+
+	s.DB = s3.New(s3sess)
 	s.Bucket = c[0].Bucket
 
 	// since there is no definit way to test the connection
 	// we are just doint a dummy request here to see if the
 	// connection is stable
-	_, err := s.DB.ListBuckets(&s3.ListBucketsInput{})
+	_, err = s.DB.ListBuckets(&s3.ListBucketsInput{})
 	return s, err
 }
 

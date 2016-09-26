@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
-	"github.com/HolmesProcessing/Holmes-Storage/objStorerS3"
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerLocalFS"
+	"github.com/HolmesProcessing/Holmes-Storage/objStorerS3"
 	"github.com/HolmesProcessing/Holmes-Storage/storerCassandra"
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 	"github.com/HolmesProcessing/Holmes-Storage/storerMongoDB"
@@ -134,7 +134,7 @@ func main() {
 
 		info.Println("Object storage was setup without errors.")
 	}
-	
+
 	if setup || objSetup {
 		return // we don't want to execute this any further
 	}
