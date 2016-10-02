@@ -33,9 +33,11 @@ type Storer interface {
 	Setup() error
 
 	StoreObject(*Object) error
+	DeleteObject(string) (*Object, error)
 	GetObject(string) (*Object, error)
 
 	StoreSubmission(*Submission) error
+	DeleteSubmission(string) (*Submission, error)
 	GetSubmission(string) (*Submission, error)
 
 	// Stores a result in the database

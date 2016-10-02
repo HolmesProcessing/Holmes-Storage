@@ -29,11 +29,15 @@ type ObjStorer interface {
 
 	// Stores a new sample in the database
 	// return "duplicate" error if already known
-	StoreSample(*Sample) error
+	DeleteSample(*Sample) error
 
 	// Gets a sample from the database, identified
 	// by its sha2 string
 	GetSample(string) (*Sample, error)
+
+	// Stores a new sample in the database
+	// return "duplicate" error if already known
+	StoreSample(*Sample) error
 }
 
 // TODO: switch from json to probably raw bytes

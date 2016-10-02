@@ -141,25 +141,38 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	}
 
 	// save structs to db
-	// submission needs to be saved first!
+	storeOkay := true
 	err = mainStorer.StoreSubmission(submission)
 	if err != nil {
+		storeOkay = false
 		httpFailure(w, r, err)
-		return
 	}
 
 	err = mainStorer.StoreObject(object)
 	if err != nil {
+		storeOkay = false
 		httpFailure(w, r, err)
-		return
 	}
 
+	// TODO: add check to see if we need to perform an object store as well
 	err = objStorer.StoreSample(sample)
 	if err != nil {
+		storeOkay = false
+		httpFailure(w, r, err)
+	}
+
+	if storeOkay == false {
+		// TODO: remove all database entries
+		// TODO: Base this on UUID verses sha
+		// TODO: If multiple Submissions, do not delete sample in ObjectStore
+		mainStorer.RemoveSubmission(submission)
+		mainStorer.RemoveObject(object)
+		objStorer.RemoveSample(sample)
+
 		httpFailure(w, r, err)
 		return
 	}
-
+	
 	httpSuccess(w, r, object)
 }
 

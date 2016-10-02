@@ -338,6 +338,20 @@ func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
 	return err
 }
 
+func (s StorerCassandra) DeleteObject(id string) (*storerGeneric.Object, error) {
+	object := &storerGeneric.Object{}
+
+	uuid, err := gocql.ParseUUID(id)
+	if err != nil {
+		return object, err
+	}
+
+	err = s.DB.Query(`DELETE * FROM objects WHERE id = ?`, uuid)
+
+	return object, err
+}
+
+
 func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 	object := &storerGeneric.Object{}
 
@@ -377,6 +391,20 @@ func (s StorerCassandra) StoreSubmission(submission *storerGeneric.Submission) e
 	).Exec()
 
 	return err
+}
+
+//TODO: Need to get UUID for entry
+func (s StorerCassandra) DeleteSubmission(id string) (*storerGeneric.Submission, error) {
+	submission := &storerGeneric.Submission{}
+
+	uuid, err := gocql.ParseUUID(id)
+	if err != nil {
+		return submission, err
+	}
+
+	err = s.DB.Query(`SELECT * FROM submissions WHERE id = ? LIMIT 1`, uuid)
+
+	return submission, err
 }
 
 func (s StorerCassandra) GetSubmission(id string) (*storerGeneric.Submission, error) {

@@ -65,6 +65,20 @@ func (s ObjStorerLocalFS) Setup() error {
 	return err
 }
 
+func (s ObjStorerLocalFS) DeleteSample(sample *objStorerGeneric.Sample) error {
+	path := filepath.Join(s.StorageLocation, sample.SHA256)
+	err := os.Remove(path)
+	return err
+}
+
+func (s ObjStorerLocalFS) GetSample(id string) (*objStorerGeneric.Sample, error) {
+	sample := &objStorerGeneric.Sample{SHA256: id}
+	path := filepath.Join(s.StorageLocation, sample.SHA256)
+	data, err := ioutil.ReadFile(path)
+	sample.Data = data
+	return sample, err
+}
+
 func (s ObjStorerLocalFS) StoreSample(sample *objStorerGeneric.Sample) error {
 	path := filepath.Join(s.StorageLocation, sample.SHA256)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -78,12 +92,5 @@ func (s ObjStorerLocalFS) StoreSample(sample *objStorerGeneric.Sample) error {
 	}
 }
 
-func (s ObjStorerLocalFS) GetSample(id string) (*objStorerGeneric.Sample, error) {
-	sample := &objStorerGeneric.Sample{SHA256: id}
-	path := filepath.Join(s.StorageLocation, sample.SHA256)
-	data, err := ioutil.ReadFile(path)
-	sample.Data = data
-	return sample, err
-}
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
