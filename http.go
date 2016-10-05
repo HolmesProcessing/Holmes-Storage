@@ -140,40 +140,43 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		Data:   fileBytes,
 	}
 
-	// save structs to db
-	storeOkay := true
-	err = mainStorer.StoreSubmission(submission)
+	inserted, err := httpStoreEverything(submission, object, sample)
 	if err != nil {
-		storeOkay = false
-		httpFailure(w, r, err)
-	}
-
-	err = mainStorer.StoreObject(object)
-	if err != nil {
-		storeOkay = false
-		httpFailure(w, r, err)
-	}
-
-	// TODO: add check to see if we need to perform an object store as well
-	err = objStorer.StoreSample(sample)
-	if err != nil {
-		storeOkay = false
-		httpFailure(w, r, err)
-	}
-
-	if storeOkay == false {
-		// TODO: remove all database entries
-		// TODO: Base this on UUID verses sha
-		// TODO: If multiple Submissions, do not delete sample in ObjectStore
-		mainStorer.RemoveSubmission(submission)
-		mainStorer.RemoveObject(object)
-		objStorer.RemoveSample(sample)
+		// Remove all database entries
+		mainStorer.DeleteSubmission(submission.Id)
+		if inserted {
+			// Only delete sample in ObjectStore, if it didn't exist before
+			mainStorer.DeleteObject(object.SHA256)
+			objStorer.DeleteSample(sample)
+		} else {
+			// If the sample did exist before, the filename- and source- fields were updated, so that needs to be reverted
+			mainStorer.UpdateObject(object.SHA256)
+		}
 
 		httpFailure(w, r, err)
 		return
 	}
-	
+
 	httpSuccess(w, r, object)
+}
+
+func httpStoreEverything(submission *storerGeneric.Submission, object *storerGeneric.Object, sample *objStorerGeneric.Sample) (bool, error) {
+	// save structs to db
+	err := mainStorer.StoreSubmission(submission)
+	if err != nil {
+		return false, err
+	}
+
+	inserted, err := mainStorer.StoreObject(object)
+	if err != nil {
+		return inserted, err
+	}
+
+	// only insert the sample, if it wasn't known before
+	if !inserted {
+		err = objStorer.StoreSample(sample)
+	}
+	return inserted, err
 }
 
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -266,7 +269,7 @@ func httpErrorCode(w http.ResponseWriter, r *http.Request, err error, code int) 
 
 func httpFailure(w http.ResponseWriter, r *http.Request, err error) {
 	warning.Println("httpFailure:", err.Error())
-
+	w.WriteHeader(http.StatusInternalServerError)
 	j, err := json.Marshal(apiResponse{
 		ResponseCode: 0,
 		Failure:      err.Error(),
