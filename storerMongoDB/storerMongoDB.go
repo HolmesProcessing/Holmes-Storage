@@ -126,8 +126,7 @@ func (s StorerMongoDB) Setup() error {
 }
 
 func (s StorerMongoDB) DeleteObject(id string) error {
-	err := s.DB.C("objects").Remove(bson.M{"sha256": id})
-	return err
+	return s.DB.C("objects").Remove(bson.M{"sha256": id})
 }
 
 func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) (bool, error) {
@@ -145,11 +144,8 @@ func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) (bool, error) {
 	}
 
 	info, err := s.DB.C("objects").Upsert(bson.M{"sha256": object.SHA256}, object)
-	if info.Updated == 0 {
-		// The object was not updated, so it was inserted
-		return true, err
-	}
-	return false, err
+	// if info.Updated equals 0, this means, the object was not updated but inserted.
+	return (info.Updated == 0), err
 }
 
 func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
@@ -176,8 +172,7 @@ func (s StorerMongoDB) UpdateObject(id string) error {
 		objSubmissions[k] = v.Id.String()
 	}
 
-	err := s.DB.C("objects").UpdateId(id, bson.M{"$set": bson.M{"source": source, "obj_name": objName, "submissions": objSubmissions}})
-	return err
+	return s.DB.C("objects").UpdateId(id, bson.M{"$set": bson.M{"source": source, "obj_name": objName, "submissions": objSubmissions}})
 }
 
 func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) error {
@@ -196,17 +191,11 @@ func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) err
 		Comment: submission.Comment,
 	}
 
-	if err := s.DB.C("submissions").Insert(submissionM); err != nil {
-		return err
-	}
-
-	return nil
+	return s.DB.C("submissions").Insert(submissionM)
 }
 
 func (s StorerMongoDB) DeleteSubmission(id string) error {
-	err := s.DB.C("submissions").RemoveId(bson.ObjectIdHex(id))
-
-	return err
+	return s.DB.C("submissions").RemoveId(bson.ObjectIdHex(id))
 }
 
 func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, error) {
@@ -310,8 +299,7 @@ func (s StorerMongoDB) GetResult(id string) (*storerGeneric.Result, error) {
 }
 
 func (s StorerMongoDB) StoreConfig(config *storerGeneric.Config) error {
-	err := s.DB.C("config").Insert(config)
-	return err
+	return s.DB.C("config").Insert(config)
 }
 
 func (s StorerMongoDB) GetConfig(path string) (*storerGeneric.Config, error) {

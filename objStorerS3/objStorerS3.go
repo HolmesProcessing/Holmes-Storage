@@ -82,6 +82,16 @@ func (s ObjStorerS3) DeleteSample(sample *objStorerGeneric.Sample) error {
 	return err
 }
 
+func (s ObjStorerS3) StoreSample(sample *objStorerGeneric.Sample) error {
+	_, err := s.DB.PutObject(&s3.PutObjectInput{
+		Body:   bytes.NewReader(sample.Data),
+		Bucket: &s.Bucket,
+		Key:    &sample.SHA256,
+	})
+
+	return err
+}
+
 func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 	sample := &objStorerGeneric.Sample{SHA256: id}
 
@@ -99,16 +109,6 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 	}
 
 	return sample, err
-}
-
-func (s ObjStorerS3) StoreSample(sample *objStorerGeneric.Sample) error {
-	_, err := s.DB.PutObject(&s3.PutObjectInput{
-		Body:   bytes.NewReader(sample.Data),
-		Bucket: &s.Bucket,
-		Key:    &sample.SHA256,
-	})
-
-	return err
 }
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs

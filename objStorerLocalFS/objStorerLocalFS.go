@@ -1,11 +1,11 @@
 package ObjStorerLocalFS
 
 import (
-	"io/ioutil"
+	"bytes"
 	"errors"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"bytes"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 )
@@ -23,22 +23,22 @@ func (s ObjStorerLocalFS) Initialize(configs []*objStorerGeneric.ObjDBConnector)
 	} else {
 		s.StorageLocation = "./objstorage-local-fs"
 	}
-	
+
 	// setup storage location if not exists
 	if err := s.Setup(); err != nil {
 		return s, err
 	}
-	
+
 	// create a temporary file to test writing + reading
 	data := []byte("test content")
 	path := filepath.Join(s.StorageLocation, "tempfile")
-	
+
 	// test writing
 	if err := ioutil.WriteFile(path, data, 0644); err != nil {
 		os.Remove(path)
 		return s, err
 	}
-	
+
 	// test reading
 	if data2, err := ioutil.ReadFile(path); err != nil {
 		os.Remove(path)
@@ -47,12 +47,12 @@ func (s ObjStorerLocalFS) Initialize(configs []*objStorerGeneric.ObjDBConnector)
 		os.Remove(path)
 		return s, errors.New("tempfile write/read failed, data mismatch")
 	}
-	
+
 	// test removal
 	if err := os.Remove(path); err != nil {
 		return s, err
 	}
-	
+
 	return s, nil
 }
 
@@ -71,14 +71,6 @@ func (s ObjStorerLocalFS) DeleteSample(sample *objStorerGeneric.Sample) error {
 	return err
 }
 
-func (s ObjStorerLocalFS) GetSample(id string) (*objStorerGeneric.Sample, error) {
-	sample := &objStorerGeneric.Sample{SHA256: id}
-	path := filepath.Join(s.StorageLocation, sample.SHA256)
-	data, err := ioutil.ReadFile(path)
-	sample.Data = data
-	return sample, err
-}
-
 func (s ObjStorerLocalFS) StoreSample(sample *objStorerGeneric.Sample) error {
 	path := filepath.Join(s.StorageLocation, sample.SHA256)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -86,11 +78,18 @@ func (s ObjStorerLocalFS) StoreSample(sample *objStorerGeneric.Sample) error {
 	} else if os.IsPermission(err) {
 		return errors.New("permission denied")
 	} else if os.IsExist(err) {
-		return nil  // duplicates are fine
+		return nil // duplicates are fine
 	} else {
 		return err
 	}
 }
 
+func (s ObjStorerLocalFS) GetSample(id string) (*objStorerGeneric.Sample, error) {
+	sample := &objStorerGeneric.Sample{SHA256: id}
+	path := filepath.Join(s.StorageLocation, sample.SHA256)
+	data, err := ioutil.ReadFile(path)
+	sample.Data = data
+	return sample, err
+}
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
