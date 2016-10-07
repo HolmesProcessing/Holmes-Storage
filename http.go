@@ -171,9 +171,8 @@ func httpStoreEverything(submission *storerGeneric.Submission, object *storerGen
 	if err != nil {
 		return inserted, err
 	}
-
 	// only insert the sample, if it wasn't known before
-	if !inserted {
+	if inserted {
 		err = objStorer.StoreSample(sample)
 	}
 	return inserted, err

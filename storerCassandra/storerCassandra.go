@@ -340,14 +340,7 @@ func (s StorerCassandra) StoreObject(object *storerGeneric.Object) (bool, error)
 }
 
 func (s StorerCassandra) DeleteObject(id string) error {
-	uuid, err := gocql.ParseUUID(id)
-	if err != nil {
-		return err
-	}
-
-	err = s.DB.Query(`DELETE * FROM objects WHERE id = ?`, uuid).Exec()
-
-	return err
+	return s.DB.Query(`DELETE FROM objects WHERE sha256 = ?`, id).Exec()
 }
 
 func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
@@ -429,7 +422,7 @@ func (s StorerCassandra) DeleteSubmission(id string) error {
 		return err
 	}
 
-	err = s.DB.Query(`DELETE * FROM submissions WHERE id = ? LIMIT 1`, uuid).Exec()
+	err = s.DB.Query(`DELETE FROM submissions WHERE id = ?`, uuid).Exec()
 
 	return err
 }
