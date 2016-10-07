@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"strings"
+	"time"
 
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 )
@@ -127,7 +126,7 @@ func (s StorerMongoDB) Setup() error {
 }
 
 func (s StorerMongoDB) DeleteObject(id string) error {
-	err := s.DB.C("objects").RemoveId(id)
+	err := s.DB.C("objects").Remove(bson.M{"sha256": id})
 	return err
 }
 
@@ -142,7 +141,7 @@ func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) (bool, error) {
 	for k, v := range submissions {
 		object.Source[k] = v.Source
 		object.ObjName[k] = v.ObjName
-		object.Submissions[k] = v.Id.String()
+		object.Submissions[k] = v.Id.Hex()
 	}
 
 	info, err := s.DB.C("objects").Upsert(bson.M{"sha256": object.SHA256}, object)
@@ -184,7 +183,7 @@ func (s StorerMongoDB) UpdateObject(id string) error {
 func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) error {
 	fmt.Println()
 	id := bson.NewObjectId()
-	submission.Id = id.String()
+	submission.Id = id.Hex()
 
 	submissionM := &Submission{
 		Id:      id,
@@ -205,7 +204,8 @@ func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) err
 }
 
 func (s StorerMongoDB) DeleteSubmission(id string) error {
-	err := s.DB.C("submissions").RemoveId(id)
+	err := s.DB.C("submissions").RemoveId(bson.ObjectIdHex(id))
+
 	return err
 }
 
