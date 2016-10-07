@@ -169,7 +169,7 @@ func (s StorerMongoDB) UpdateObject(id string) error {
 	for k, v := range submissions {
 		source[k] = v.Source
 		objName[k] = v.ObjName
-		objSubmissions[k] = v.Id.String()
+		objSubmissions[k] = v.Id.Hex()
 	}
 
 	return s.DB.C("objects").UpdateId(id, bson.M{"$set": bson.M{"source": source, "obj_name": objName, "submissions": objSubmissions}})
