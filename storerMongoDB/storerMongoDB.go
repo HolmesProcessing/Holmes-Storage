@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"time"
-
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"strings"
+	"time"
 
 	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 )
@@ -126,22 +125,27 @@ func (s StorerMongoDB) Setup() error {
 	return nil
 }
 
-func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) error {
+func (s StorerMongoDB) DeleteObject(id string) error {
+	return s.DB.C("objects").Remove(bson.M{"sha256": id})
+}
+
+func (s StorerMongoDB) StoreObject(object *storerGeneric.Object) (bool, error) {
 	// gather submissions and update source, objname, submissions
 	submissions := s.GetSubmissionsByObject(object.SHA256)
 	l := len(submissions)
 	object.Source = make([]string, l)
 	object.ObjName = make([]string, l)
 	object.Submissions = make([]string, l)
-	
+
 	for k, v := range submissions {
 		object.Source[k] = v.Source
 		object.ObjName[k] = v.ObjName
-		object.Submissions[k] = v.Id.String()
+		object.Submissions[k] = v.Id.Hex()
 	}
 
-	_, err := s.DB.C("objects").Upsert(bson.M{"sha256":object.SHA256}, object)
-	return err
+	info, err := s.DB.C("objects").Upsert(bson.M{"sha256": object.SHA256}, object)
+	// if info.Updated equals 0, this means, the object was not updated but inserted.
+	return (info.Updated == 0), err
 }
 
 func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
@@ -155,11 +159,29 @@ func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
 	return &object, nil
 }
 
+func (s StorerMongoDB) UpdateObject(id string) error {
+	submissions := s.GetSubmissionsByObject(id)
+	l := len(submissions)
+	source := make([]string, l)
+	objName := make([]string, l)
+	objSubmissions := make([]string, l)
+
+	for k, v := range submissions {
+		source[k] = v.Source
+		objName[k] = v.ObjName
+		objSubmissions[k] = v.Id.Hex()
+	}
+
+	return s.DB.C("objects").UpdateId(id, bson.M{"$set": bson.M{"source": source, "obj_name": objName, "submissions": objSubmissions}})
+}
+
 func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) error {
 	fmt.Println()
+	id := bson.NewObjectId()
+	submission.Id = id.Hex()
 
 	submissionM := &Submission{
-		Id:      bson.NewObjectId(),
+		Id:      id,
 		SHA256:  submission.SHA256,
 		UserId:  submission.UserId,
 		Source:  submission.Source,
@@ -169,11 +191,11 @@ func (s StorerMongoDB) StoreSubmission(submission *storerGeneric.Submission) err
 		Comment: submission.Comment,
 	}
 
-	if err := s.DB.C("submissions").Insert(submissionM); err != nil {
-		return err
-	}
+	return s.DB.C("submissions").Insert(submissionM)
+}
 
-	return nil
+func (s StorerMongoDB) DeleteSubmission(id string) error {
+	return s.DB.C("submissions").RemoveId(bson.ObjectIdHex(id))
 }
 
 func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, error) {
@@ -199,7 +221,7 @@ func (s StorerMongoDB) GetSubmission(id string) (*storerGeneric.Submission, erro
 	}, nil
 }
 
-func (s StorerMongoDB) GetSubmissionsByObject(sha256 string) ([]*Submission) {
+func (s StorerMongoDB) GetSubmissionsByObject(sha256 string) []*Submission {
 	submissions := []*Submission{}
 	s.DB.C("submissions").Find(bson.M{"sha256": sha256}).All(&submissions)
 	return submissions
@@ -277,8 +299,7 @@ func (s StorerMongoDB) GetResult(id string) (*storerGeneric.Result, error) {
 }
 
 func (s StorerMongoDB) StoreConfig(config *storerGeneric.Config) error {
-	err := s.DB.C("config").Insert(config)
-	return err
+	return s.DB.C("config").Insert(config)
 }
 
 func (s StorerMongoDB) GetConfig(path string) (*storerGeneric.Config, error) {

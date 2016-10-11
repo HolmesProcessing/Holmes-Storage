@@ -32,10 +32,18 @@ type Storer interface {
 	// to create initial collections (if necessary)
 	Setup() error
 
-	StoreObject(*Object) error
+	// The object is only inserted if it wasn't there before.
+	// The returned bool is true, if it was previously unknown.
+	StoreObject(*Object) (bool, error)
+	DeleteObject(string) error
 	GetObject(string) (*Object, error)
 
+	// Gather all the submissions for the object, extract the filenames
+	// and the sources and store them in the object
+	UpdateObject(string) error
+
 	StoreSubmission(*Submission) error
+	DeleteSubmission(string) error
 	GetSubmission(string) (*Submission, error)
 
 	// Stores a result in the database

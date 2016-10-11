@@ -34,6 +34,9 @@ type ObjStorer interface {
 	// Gets a sample from the database, identified
 	// by its sha2 string
 	GetSample(string) (*Sample, error)
+
+	// Delete a sample from the database
+	DeleteSample(*Sample) error
 }
 
 // TODO: switch from json to probably raw bytes

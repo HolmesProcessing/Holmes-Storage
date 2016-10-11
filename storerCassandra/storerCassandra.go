@@ -46,7 +46,7 @@ func (s StorerCassandra) CreateDB(c []*storerGeneric.DBConnector) error {
 	}
 	cluster.Keyspace = "system"
 	s.DB, err = cluster.CreateSession()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	query := fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s WITH replication = 
@@ -192,24 +192,24 @@ func (s StorerCassandra) Setup() error {
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
-//////////	
-// WARNING: Uncomment only if needed. This can increase physical storage costs by ~40% with 1 million samples and 4 Services.
-//	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx 
-//	ON results (results) 
-//	USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-//	WITH OPTIONS = {
-//		'analyzed' : 'true', 
-//		'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-//		'tokenization_enable_stemming' : 'false', 
-//		'tokenization_locale' : 'en', 
-//		'tokenization_normalize_lowercase' : 'true', 
-//		'tokenization_skip_stop_words' : 'true',
-//		'max_compaction_flush_memory_in_mb': '512'
-//		};`
-//	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
-//		return err
-//	}
-//////////
+	//////////
+	// WARNING: Uncomment only if needed. This can increase physical storage costs by ~40% with 1 million samples and 4 Services.
+	//	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx
+	//	ON results (results)
+	//	USING 'org.apache.cassandra.index.sasi.SASIIndex'
+	//	WITH OPTIONS = {
+	//		'analyzed' : 'true',
+	//		'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer',
+	//		'tokenization_enable_stemming' : 'false',
+	//		'tokenization_locale' : 'en',
+	//		'tokenization_normalize_lowercase' : 'true',
+	//		'tokenization_skip_stop_words' : 'true',
+	//		'max_compaction_flush_memory_in_mb': '512'
+	//		};`
+	//	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
+	//		return err
+	//	}
+	//////////
 
 	// Add SASI indexes for objects
 	tableObjectsIndex := `CREATE CUSTOM INDEX objects_md5_idx 
@@ -291,15 +291,15 @@ func (s StorerCassandra) Setup() error {
 	return nil
 }
 
-func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
+func (s StorerCassandra) StoreObject(object *storerGeneric.Object) (bool, error) {
 	submissions, err := s.GetSubmissionsByObject(object.SHA256)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	l := len(submissions)
 	if l == 0 {
-		return errors.New("Tried to store an object which was never submited!")
+		return false, errors.New("Tried to store an object which was never submited!")
 	}
 
 	source := make([]string, l)
@@ -310,10 +310,11 @@ func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
 		obj_name[k] = v.ObjName
 		submission_ids[k] = v.Id
 	}
-
+	inserted := false
 	// just one submission implies a new object
 	// more than one implies an update.
 	if l == 1 {
+		inserted = true
 		err = s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			object.SHA256,
 			object.SHA1,
@@ -335,7 +336,11 @@ func (s StorerCassandra) StoreObject(object *storerGeneric.Object) error {
 	object.ObjName = obj_name
 	object.Submissions = submission_ids
 
-	return err
+	return inserted, err
+}
+
+func (s StorerCassandra) DeleteObject(id string) error {
+	return s.DB.Query(`DELETE FROM objects WHERE sha256 = ?`, id).Exec()
 }
 
 func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
@@ -359,11 +364,43 @@ func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 	return object, err
 }
 
+func (s StorerCassandra) UpdateObject(id string) error {
+	submissions, err := s.GetSubmissionsByObject(id)
+	if err != nil {
+		return err
+	}
+
+	l := len(submissions)
+	if l == 0 {
+		// TODO: remove the entry, if it exists?
+		return errors.New("Tried to update an object which was never submited!")
+	}
+
+	source := make([]string, l)
+	obj_name := make([]string, l)
+	submission_ids := make([]string, l)
+	for k, v := range submissions {
+		source[k] = v.Source
+		obj_name[k] = v.ObjName
+		submission_ids[k] = v.Id
+	}
+
+	err = s.DB.Query(`UPDATE objects SET source = ?,  obj_name = ?, submissions = ? WHERE sha256 = ?`,
+		source,
+		obj_name,
+		submission_ids,
+		id,
+	).Exec()
+	return err
+}
+
 func (s StorerCassandra) StoreSubmission(submission *storerGeneric.Submission) error {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return err
 	}
+
+	submission.Id = id.String()
 
 	err = s.DB.Query(`INSERT INTO submissions (id, sha256, user_id, source, date, obj_name, tags, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		id,
@@ -375,6 +412,17 @@ func (s StorerCassandra) StoreSubmission(submission *storerGeneric.Submission) e
 		submission.Tags,
 		submission.Comment,
 	).Exec()
+
+	return err
+}
+
+func (s StorerCassandra) DeleteSubmission(id string) error {
+	uuid, err := gocql.ParseUUID(id)
+	if err != nil {
+		return err
+	}
+
+	err = s.DB.Query(`DELETE FROM submissions WHERE id = ?`, uuid).Exec()
 
 	return err
 }
