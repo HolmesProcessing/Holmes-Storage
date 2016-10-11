@@ -146,7 +146,8 @@ func main() {
 	initAMQP(conf.AMQP, conf.Queue, conf.RoutingKey, conf.PrefetchCount)
 }
 
-// initLogging sets up the three global loggers warning, info and debug
+// initLogging sets up the three global loggers warning, info and debug. It
+// panics if an error occures.
 func initLogging(file, level string) {
 	// default: only log to stdout
 	handler := io.MultiWriter(os.Stdout)

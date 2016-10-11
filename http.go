@@ -32,6 +32,8 @@ var (
 	mimeLock     = &sync.Mutex{}
 )
 
+// initHTTP builds and starts the HTTP server that is serving all
+// HTTP based requests like storing new samples and downloading files.
 func initHTTP(httpBinding string, eMime bool) {
 	extendedMime = eMime
 
@@ -45,6 +47,9 @@ func initHTTP(httpBinding string, eMime bool) {
 	http.ListenAndServe(httpBinding, router)
 }
 
+// httpSampleStore handles "/sample/" requests and is used to validate
+// incoming samples and requests. If everything looks good it builds the
+// structs and hands them to httpStoreEverything.
 func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// keep samples up to 20mb in RAM to speed up processing
 	// if you see RAM exhaustion on your host lower this value
@@ -160,6 +165,9 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 	httpSuccess(w, r, object)
 }
 
+// httpStoreEverything accepts a submission, object and sample struct pointer and
+// tries to save them using the configured storage engines. It returns a boolean value
+// indicating if the sample file was already known (resubmitted) and an error.
 func httpStoreEverything(submission *storerGeneric.Submission, object *storerGeneric.Object, sample *objStorerGeneric.Sample) (bool, error) {
 	// save structs to db
 	err := mainStorer.StoreSubmission(submission)
@@ -178,6 +186,8 @@ func httpStoreEverything(submission *storerGeneric.Submission, object *storerGen
 	return inserted, err
 }
 
+// httpSampleStore handles "/sample/:sha256" requests and returns the matching
+// file for download if found.
 func httpSampleGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	sample, err := objStorer.GetSample(strings.ToLower(ps.ByName("sha256")))
 
@@ -234,6 +244,8 @@ func httpConfigGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
 	fmt.Fprint(w, string(config.FileContents))
 }
 
+// httpSuccess builds the default http response for a successfull request
+// and writes to the ResponseWriter.
 func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 	j, err := json.Marshal(apiResponse{
 		ResponseCode: 1,
@@ -249,6 +261,7 @@ func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 	w.Write(j)
 }
 
+// httpErrorCode sends an HTTP Error back as a response to the request.
 func httpErrorCode(w http.ResponseWriter, r *http.Request, err error, code int) {
 	warning.Println("httpFailureEC:", err.Error(), code)
 
@@ -266,6 +279,8 @@ func httpErrorCode(w http.ResponseWriter, r *http.Request, err error, code int) 
 	http.Error(w, string(j), code)
 }
 
+// httpFailure builds the default http response for a failed request
+// and writes to the ResponseWriter.
 func httpFailure(w http.ResponseWriter, r *http.Request, err error) {
 	warning.Println("httpFailure:", err.Error())
 	w.WriteHeader(http.StatusInternalServerError)
@@ -288,6 +303,10 @@ func err500(w http.ResponseWriter, r *http.Request, err interface{}) {
 	http.Error(w, "Server error occured!", 500)
 }
 
+// getMimeFromMagic accepts a sample and counter and then tries to determin the
+// mime type of the file. If a panic occures in an external library the function
+// will recover and try to get the mime type up to three times before returning
+// "N/A" as mime type.
 func getMimeFromMagic(fileBytes []byte, try int) (mimeType string, err error) {
 	defer func() {
 		magicmime.Close()
