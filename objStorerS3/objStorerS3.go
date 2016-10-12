@@ -111,4 +111,9 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 	return sample, err
 }
 
+func (s ObjStorerS3) GetObjList() ([]string, error) {
+	//TODO!!!
+	return nil, nil
+}
+
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs

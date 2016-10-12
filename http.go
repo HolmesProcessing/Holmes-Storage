@@ -43,6 +43,9 @@ func initHTTP(httpBinding string, eMime bool) {
 	router.PUT("/samples/", httpSampleStore)
 	router.GET("/config/*path", httpConfigGet)
 	router.POST("/config/*path", httpConfigStore)
+	router.GET("/maintenance/listObjStorerObjs", httpObjStorerGetObjs)
+	router.GET("/maintenance/listOrphans", httpListOrphans)
+	router.POST("/maintenance/deleteOrphans", httpDeleteOrphans)
 
 	http.ListenAndServe(httpBinding, router)
 }
@@ -259,6 +262,30 @@ func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(j)
+}
+
+// httpObjStorerGetObjs gathers a list of objects from the object-storer
+// and writes a json list of sha256-values to the ResponseWriter.
+func httpObjStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	objs, err := objStorer.GetObjList()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	objsM, err := json.Marshal(objs)
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(objsM)
+}
+
+func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// TODO
+}
+func httpDeleteOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// TODO
 }
 
 // httpErrorCode sends an HTTP Error back as a response to the request.
