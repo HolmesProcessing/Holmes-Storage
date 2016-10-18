@@ -38,8 +38,8 @@ type ObjStorer interface {
 	// Delete a sample from the database
 	DeleteSample(*Sample) error
 
-	// Get a list of all the sha256-values of the objects
-	GetObjList() ([]string, error)
+	// Get a map of all the sha256-values of the objects
+	GetObjMap() (map[string]struct{}, error)
 }
 
 // TODO: switch from json to probably raw bytes

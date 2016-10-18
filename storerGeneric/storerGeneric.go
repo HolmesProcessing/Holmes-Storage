@@ -37,6 +37,7 @@ type Storer interface {
 	StoreObject(*Object) (bool, error)
 	DeleteObject(string) error
 	GetObject(string) (*Object, error)
+	GetObjMap() (map[string]struct{}, error)
 
 	// Gather all the submissions for the object, extract the filenames
 	// and the sources and store them in the object

@@ -159,6 +159,11 @@ func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
 	return &object, nil
 }
 
+func (s StorerMongoDB) GetObjMap() (map[string]struct{}, error) {
+	//TODO!!!
+	return nil, nil
+}
+
 func (s StorerMongoDB) UpdateObject(id string) error {
 	submissions := s.GetSubmissionsByObject(id)
 	l := len(submissions)

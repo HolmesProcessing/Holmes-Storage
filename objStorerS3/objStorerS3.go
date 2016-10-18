@@ -111,7 +111,7 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 	return sample, err
 }
 
-func (s ObjStorerS3) GetObjList() ([]string, error) {
+func (s ObjStorerS3) GetObjMap() (map[string]struct{}, error) {
 	//TODO!!!
 	return nil, nil
 }

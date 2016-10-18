@@ -364,6 +364,26 @@ func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 	return object, err
 }
 
+func (s StorerCassandra) GetObjMap() (map[string]struct{}, error) {
+	//shas := make([]string, 0)
+	shas := make(map[string]struct{})
+	sha256 := ""
+
+	iter := s.DB.Query(`SELECT sha256 FROM objects`).Iter()
+	for iter.Scan(
+		&sha256,
+	) {
+		/*shas = append(shas, sha256)
+		sha256 = ""*/
+		shas[sha256] = struct{}{}
+	}
+
+	err := iter.Close()
+
+	return shas, err
+
+}
+
 func (s StorerCassandra) UpdateObject(id string) error {
 	submissions, err := s.GetSubmissionsByObject(id)
 	if err != nil {

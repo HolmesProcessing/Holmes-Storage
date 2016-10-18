@@ -44,6 +44,7 @@ func initHTTP(httpBinding string, eMime bool) {
 	router.GET("/config/*path", httpConfigGet)
 	router.POST("/config/*path", httpConfigStore)
 	router.GET("/maintenance/listObjStorerObjs", httpObjStorerGetObjs)
+	router.GET("/maintenance/listMainStorerObjs", httpMainStorerGetObjs)
 	router.GET("/maintenance/listOrphans", httpListOrphans)
 	router.POST("/maintenance/deleteOrphans", httpDeleteOrphans)
 
@@ -264,15 +265,21 @@ func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 	w.Write(j)
 }
 
-// httpObjStorerGetObjs gathers a list of objects from the object-storer
-// and writes a json list of sha256-values to the ResponseWriter.
-func httpObjStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	objs, err := objStorer.GetObjList()
+// httpReturnObjs is just a helper-function which transforms the given objects to a list and writes them to the http-Response
+func httpReturnObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params, objs map[string]struct{}, err error) {
 	if err != nil {
 		httpFailure(w, r, err)
 	}
 
-	objsM, err := json.Marshal(objs)
+	// transform to list, so it is better readable
+	objsL := make([]string, len(objs))
+	i := 0
+	for o := range objs {
+		objsL[i] = o
+		i++
+	}
+
+	objsM, err := json.Marshal(objsL)
 	if err != nil {
 		httpFailure(w, r, err)
 	}
@@ -281,8 +288,79 @@ func httpObjStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter.
 	w.Write(objsM)
 }
 
+// httpObjStorerGetObjs gathers a list of objects from the objectstorer
+// and writes a json list of sha256-values to the ResponseWriter.
+func httpObjStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	objs, err := objStorer.GetObjMap()
+	httpReturnObjs(w, r, ps, objs, err)
+}
+
+// httpMainStorerGetObjs gathers a list of objects from the mainstorer
+// and writes a json list of sha256-values to the ResponseWriter.
+func httpMainStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	objs, err := mainStorer.GetObjMap()
+	httpReturnObjs(w, r, ps, objs, err)
+}
+
 func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// TODO
+	// orphans are defined as:
+	//   1. samples in the objstorer with no corresponding object in the database
+	orphansObjStorer := make([]string, 0)
+	//   2. objects in the database with no corresponding sample in the objstorer
+	orphansDatabase := make([]string, 0)
+	//   3. objects in the database with no corresponding submissions
+	//orphansDatabaseObjects := make([]string, 0) TODO
+	//   4. submissions in the database with no corresponding objects
+	//orphansDatabaseSubmissions := make([]string, 0) TODO
+	// To avoid trouble with currently uploaded samples, the following workflow is implemented:
+	// Get database object-list       -> d1
+	// Get object storer list         -> o
+	// Get database object-list again -> d2
+	// Compare d2 and o to find samples that are in the object storer but not in the database
+	// Compare o and d1 to find samples that are in the database but not in the object storer
+	d1, err := mainStorer.GetObjMap()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	o, err := objStorer.GetObjMap()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	d2, err := mainStorer.GetObjMap()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+	//check whether all objects in objStorer are in the database
+	for obj := range o {
+		_, exists := d2[obj]
+		if !exists {
+			orphansObjStorer = append(orphansObjStorer, obj)
+		}
+	}
+	//check whether all objects in the database are in the objStorer
+	for obj := range d1 {
+		_, exists := o[obj]
+		if !exists {
+			orphansDatabase = append(orphansDatabase, obj)
+		}
+	}
+
+	orphansM, err := json.Marshal(
+		struct {
+			Objstorer []string
+			Database  []string
+		}{
+			Objstorer: orphansObjStorer,
+			Database:  orphansDatabase,
+		})
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(orphansM)
 }
 func httpDeleteOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// TODO
