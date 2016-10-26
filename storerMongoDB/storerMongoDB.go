@@ -160,8 +160,16 @@ func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
 }
 
 func (s StorerMongoDB) GetObjMap() (map[string]struct{}, error) {
-	//TODO!!!
-	return nil, nil
+	shas := make(map[string]struct{})
+	iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true}).Iter()
+	result := bson.M{}
+	for iter.Next(&result) {
+		shas[result["sha256"].(string)] = struct{}{}
+	}
+
+	err := iter.Close()
+
+	return shas, err
 }
 
 func (s StorerMongoDB) UpdateObject(id string) error {

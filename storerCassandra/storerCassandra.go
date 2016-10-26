@@ -365,7 +365,6 @@ func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 }
 
 func (s StorerCassandra) GetObjMap() (map[string]struct{}, error) {
-	//shas := make([]string, 0)
 	shas := make(map[string]struct{})
 	sha256 := ""
 
@@ -373,8 +372,6 @@ func (s StorerCassandra) GetObjMap() (map[string]struct{}, error) {
 	for iter.Scan(
 		&sha256,
 	) {
-		/*shas = append(shas, sha256)
-		sha256 = ""*/
 		shas[sha256] = struct{}{}
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
+	"log"
 )
 
 type ObjStorerS3 struct {
@@ -112,8 +113,17 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 }
 
 func (s ObjStorerS3) GetObjMap() (map[string]struct{}, error) {
-	//TODO!!!
-	return nil, nil
+	//TODO: ListObjectsInput claims to only get a max of 1000 objs
+	params := &s3.ListObjectsInput{
+		Bucket: aws.String("holmes"),
+	}
+	resp, err := s.DB.ListObjects(params)
+	retM := make(map[string]struct{})
+	for _, c := range resp.Contents {
+		retM[*(c.Key)] = struct{}{}
+	}
+	log.Println(len(retM))
+	return retM, err
 }
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
