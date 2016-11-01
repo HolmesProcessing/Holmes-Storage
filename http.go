@@ -362,8 +362,42 @@ func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(orphansM)
 }
+
 func httpDeleteOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// TODO
+	d1, err := mainStorer.GetObjMap()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	o, err := objStorer.GetObjMap()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+
+	d2, err := mainStorer.GetObjMap()
+	if err != nil {
+		httpFailure(w, r, err)
+	}
+	//check whether all objects in objStorer are in the database
+	for obj := range o {
+		_, exists := d2[obj]
+		if !exists {
+			// delete obj from o
+			sample, err := objStorer.GetSample(obj)
+			if err != nil {
+				httpFailure(w, r, err)
+			}
+			objStorer.DeleteSample(sample)
+		}
+	}
+	//check whether all objects in the database are in the objStorer
+	for obj := range d1 {
+		_, exists := o[obj]
+		if !exists {
+			// delete obj from d1
+			mainStorer.DeleteObject(obj)
+		}
+	}
 }
 
 // httpErrorCode sends an HTTP Error back as a response to the request.
