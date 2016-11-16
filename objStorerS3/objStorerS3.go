@@ -113,17 +113,28 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 }
 
 func (s ObjStorerS3) GetObjMap() (map[string]struct{}, error) {
-	//TODO: ListObjectsInput claims to only get a max of 1000 objs
-	params := &s3.ListObjectsInput{
-		Bucket: aws.String("holmes"),
-	}
-	resp, err := s.DB.ListObjects(params)
 	retM := make(map[string]struct{})
-	for _, c := range resp.Contents {
-		retM[*(c.Key)] = struct{}{}
+
+	// ListObjects can only get a max of 1000 objs, so we need to do this in a loop
+	cont := true
+	params := &s3.ListObjectsInput{
+		Bucket:  aws.String("holmes"),
+		MaxKeys: aws.Int64(1000),
+	}
+	for cont {
+		resp, err := s.DB.ListObjects(params)
+		if err != nil {
+			return retM, err
+		}
+		for _, c := range resp.Contents {
+			retM[*(c.Key)] = struct{}{}
+		}
+
+		params.Marker = resp.Contents[len(resp.Contents)-1].Key
+		cont = *resp.IsTruncated
 	}
 	log.Println(len(retM))
-	return retM, err
+	return retM, nil
 }
 
 // TODO: Support MultipleObjects retrieval and getting. Useful when using something over 100megs
