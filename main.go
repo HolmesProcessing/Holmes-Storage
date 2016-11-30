@@ -32,6 +32,8 @@ type config struct {
 
 	HTTP         string
 	ExtendedMime bool
+
+	Status string
 }
 
 var (
@@ -139,7 +141,12 @@ func main() {
 		return // we don't want to execute this any further
 	}
 
+	// start status server for UDP status api
+	info.Println("Listening for status messages on:", conf.Status)
+	initStatusModule(conf.Status)
+
 	// start webserver for HTTP API
+	info.Println("Listening for http requests on:", conf.HTTP)
 	go initHTTP(conf.HTTP, conf.ExtendedMime)
 
 	// start to listen for new restults

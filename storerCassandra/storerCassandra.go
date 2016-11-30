@@ -3,6 +3,7 @@ package StorerCassandra
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gocql/gocql"
 
@@ -45,11 +46,12 @@ func (s StorerCassandra) CreateDB(c []*storerGeneric.DBConnector) error {
 		return err
 	}
 	cluster.Keyspace = "system"
+	cluster.Timeout = 20 * time.Second
 	s.DB, err = cluster.CreateSession()
 	if err != nil {
 		return err
 	}
-	query := fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s WITH replication = 
+	query := fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s WITH replication =
 		{'class': 'NetworkTopologyStrategy', 'dc1': '2'};`, c[0].Database)
 	if err := s.DB.Query(query).Exec(); err != nil {
 		return err
@@ -150,44 +152,44 @@ func (s StorerCassandra) Setup() error {
 	//TODO: add indexes for other entries (watchguard_status, user_id, service_version) under results when totem catches up
 
 	// Add SASI indexes for results
-	tableResultsIndex := `CREATE CUSTOM INDEX results_comment_idx 
-		ON results (comment) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+	tableResultsIndex := `CREATE CUSTOM INDEX results_comment_idx
+		ON results (comment)
+		USING 'org.apache.cassandra.index.sasi.SASIIndex'
 		WITH OPTIONS = {
-			'analyzed' : 'true', 
-			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-			'tokenization_enable_stemming' : 'true', 
-			'tokenization_locale' : 'en', 
-			'tokenization_normalize_lowercase' : 'true', 
+			'analyzed' : 'true',
+			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer',
+			'tokenization_enable_stemming' : 'true',
+			'tokenization_locale' : 'en',
+			'tokenization_normalize_lowercase' : 'true',
 			'tokenization_skip_stop_words' : 'true'
 		};`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableResultsIndex = `CREATE CUSTOM INDEX results_finished_date_time_idx 
-		ON results (finished_date_time) 
+	tableResultsIndex = `CREATE CUSTOM INDEX results_finished_date_time_idx
+		ON results (finished_date_time)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableResultsIndex = `CREATE CUSTOM INDEX results_service_name_idx 
-		ON results (service_name) 
+	tableResultsIndex = `CREATE CUSTOM INDEX results_service_name_idx
+		ON results (service_name)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableResultsIndex = `CREATE CUSTOM INDEX results_sha256_idx 
-		ON results (sha256) 
+	tableResultsIndex = `CREATE CUSTOM INDEX results_sha256_idx
+		ON results (sha256)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableResultsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
-		ON results (started_date_time) 
+	tableResultsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx
+		ON results (started_date_time)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
@@ -212,22 +214,22 @@ func (s StorerCassandra) Setup() error {
 	//////////
 
 	// Add SASI indexes for objects
-	tableObjectsIndex := `CREATE CUSTOM INDEX objects_md5_idx 
-		ON objects (md5) 
+	tableObjectsIndex := `CREATE CUSTOM INDEX objects_md5_idx
+		ON objects (md5)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableObjectsIndex = `CREATE CUSTOM INDEX objects_mime_idx 
-		ON objects (mime) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+	tableObjectsIndex = `CREATE CUSTOM INDEX objects_mime_idx
+		ON objects (mime)
+		USING 'org.apache.cassandra.index.sasi.SASIIndex'
 		WITH OPTIONS = {
-			'analyzed' : 'true', 
-			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-			'tokenization_enable_stemming' : 'false', 
-			'tokenization_locale' : 'en', 
-			'tokenization_normalize_lowercase' : 'true', 
+			'analyzed' : 'true',
+			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer',
+			'tokenization_enable_stemming' : 'false',
+			'tokenization_locale' : 'en',
+			'tokenization_normalize_lowercase' : 'true',
 			'tokenization_skip_stop_words' : 'true'
 		};`
 	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
@@ -235,31 +237,31 @@ func (s StorerCassandra) Setup() error {
 	}
 
 	// Add SASI indexes for submissions
-	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx 
-		ON submissions (comment) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx
+		ON submissions (comment)
+		USING 'org.apache.cassandra.index.sasi.SASIIndex'
 		WITH OPTIONS = {
-			'analyzed' : 'true', 
-			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-			'tokenization_enable_stemming' : 'true', 
-			'tokenization_locale' : 'en', 
-			'tokenization_normalize_lowercase' : 'true', 
+			'analyzed' : 'true',
+			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer',
+			'tokenization_enable_stemming' : 'true',
+			'tokenization_locale' : 'en',
+			'tokenization_normalize_lowercase' : 'true',
 			'tokenization_skip_stop_words' : 'true'
 		};`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx 
-		ON submissions (date) 
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx
+		ON submissions (date)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_obj_name_idx 
-		ON submissions (obj_name) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_obj_name_idx
+		ON submissions (obj_name)
+		USING 'org.apache.cassandra.index.sasi.SASIIndex'
 		WITH OPTIONS = {
 			'mode' : 'CONTAINS'
 		};`
@@ -267,22 +269,22 @@ func (s StorerCassandra) Setup() error {
 		return err
 	}
 
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_sha256_idx 
-		ON submissions (sha256) 
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_sha256_idx
+		ON submissions (sha256)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_source_idx 
-		ON submissions (source) 
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_source_idx
+		ON submissions (source)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
 
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_user_id_idx 
-		ON submissions (user_id) 
+	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_user_id_idx
+		ON submissions (user_id)
 		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
