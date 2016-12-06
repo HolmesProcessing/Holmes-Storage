@@ -1,5 +1,7 @@
 package objStorerGeneric
 
+import "time"
+
 /*
 This file contains structs to represent all default
 collections and interfaces.
@@ -38,8 +40,8 @@ type ObjStorer interface {
 	// Delete a sample from the database
 	DeleteSample(*Sample) error
 
-	// Get a map of all the sha256-values of the objects
-	GetObjMap() (map[string]struct{}, error)
+	// Get a map of all the sha256-values of the objects to their corresponding upload-time
+	GetObjMap() (map[string]time.Time, error)
 }
 
 // TODO: switch from json to probably raw bytes

@@ -37,7 +37,9 @@ type Storer interface {
 	StoreObject(*Object) (bool, error)
 	DeleteObject(string) error
 	GetObject(string) (*Object, error)
-	GetObjMap() (map[string]struct{}, error)
+	GetObjMap() (map[string]time.Time, error)
+	// Map the SHA256 to the first submission
+	GetSubmissionMap() (map[string]time.Time, error)
 
 	// Gather all the submissions for the object, extract the filenames
 	// and the sources and store them in the object

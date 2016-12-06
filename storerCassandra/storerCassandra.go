@@ -3,6 +3,7 @@ package StorerCassandra
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gocql/gocql"
 
@@ -364,21 +365,46 @@ func (s StorerCassandra) GetObject(id string) (*storerGeneric.Object, error) {
 	return object, err
 }
 
-func (s StorerCassandra) GetObjMap() (map[string]struct{}, error) {
-	shas := make(map[string]struct{})
+func (s StorerCassandra) GetObjMap() (map[string]time.Time, error) {
+	shas := make(map[string]time.Time)
 	sha256 := ""
 
 	iter := s.DB.Query(`SELECT sha256 FROM objects`).Iter()
 	for iter.Scan(
 		&sha256,
 	) {
-		shas[sha256] = struct{}{}
+		shas[sha256] = time.Now() //TODO
 	}
 
 	err := iter.Close()
 
 	return shas, err
 
+}
+
+func (s StorerCassandra) GetSubmissionMap() (map[string]time.Time, error) {
+	shas := make(map[string]time.Time)
+	sha256 := ""
+	var date time.Time
+
+	iter := s.DB.Query(`SELECT sha256, date FROM objects`).Iter()
+	for iter.Scan(
+		&sha256,
+		&date,
+	) {
+		val, exists := shas[sha256]
+		if !exists {
+			shas[sha256] = date
+		} else {
+			if date.Before(val) {
+				shas[sha256] = date
+			}
+		}
+	}
+
+	err := iter.Close()
+
+	return shas, err
 }
 
 func (s StorerCassandra) UpdateObject(id string) error {

@@ -266,20 +266,22 @@ func httpSuccess(w http.ResponseWriter, r *http.Request, result interface{}) {
 }
 
 // httpReturnObjs is just a helper-function which transforms the given objects to a list and writes them to the http-Response
-func httpReturnObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params, objs map[string]struct{}, err error) {
+func httpReturnObjs(w http.ResponseWriter, r *http.Request, ps httprouter.Params, objs map[string]time.Time, err error) {
 	if err != nil {
 		httpFailure(w, r, err)
 	}
+	/*
+		// transform to list, so it is better readable
+		objsL := make([]string, len(objs))
+		i := 0
+		for o := range objs {
+			objsL[i] = o
+			i++
+		}
 
-	// transform to list, so it is better readable
-	objsL := make([]string, len(objs))
-	i := 0
-	for o := range objs {
-		objsL[i] = o
-		i++
-	}
-
-	objsM, err := json.Marshal(objsL)
+		objsM, err := json.Marshal(objsL)
+	*/
+	objsM, err := json.Marshal(objs)
 	if err != nil {
 		httpFailure(w, r, err)
 	}

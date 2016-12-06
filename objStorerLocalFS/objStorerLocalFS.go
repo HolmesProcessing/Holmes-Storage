@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
 )
@@ -92,7 +93,7 @@ func (s ObjStorerLocalFS) GetSample(id string) (*objStorerGeneric.Sample, error)
 	return sample, err
 }
 
-func (s ObjStorerLocalFS) GetObjMap() (map[string]struct{}, error) {
+func (s ObjStorerLocalFS) GetObjMap() (map[string]time.Time, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -100,9 +101,9 @@ func (s ObjStorerLocalFS) GetObjMap() (map[string]struct{}, error) {
 	os.Chdir(s.StorageLocation)
 	ret, err := filepath.Glob("*")
 	os.Chdir(wd)
-	retM := make(map[string]struct{})
+	retM := make(map[string]time.Time)
 	for _, i := range ret {
-		retM[i] = struct{}{}
+		retM[i] = time.Now() //TODO!!!
 	}
 	return retM, err
 }

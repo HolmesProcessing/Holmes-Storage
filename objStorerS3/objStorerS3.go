@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -112,8 +113,8 @@ func (s ObjStorerS3) GetSample(id string) (*objStorerGeneric.Sample, error) {
 	return sample, err
 }
 
-func (s ObjStorerS3) GetObjMap() (map[string]struct{}, error) {
-	retM := make(map[string]struct{})
+func (s ObjStorerS3) GetObjMap() (map[string]time.Time, error) {
+	retM := make(map[string]time.Time)
 
 	// ListObjects can only get a max of 1000 objs, so we need to do this in a loop
 	cont := true
@@ -127,7 +128,7 @@ func (s ObjStorerS3) GetObjMap() (map[string]struct{}, error) {
 			return retM, err
 		}
 		for _, c := range resp.Contents {
-			retM[*(c.Key)] = struct{}{}
+			retM[*(c.Key)] = *c.LastModified
 		}
 
 		params.Marker = resp.Contents[len(resp.Contents)-1].Key
