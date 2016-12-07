@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -304,49 +305,89 @@ func httpMainStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter
 	httpReturnObjs(w, r, ps, objs, err)
 }
 
+// httpGetOrphans identifies the orphans and executes the given action-functions
+// for each orphan.
+func httpGetOrphans(actionObjStorer func(string) error, actionMainStorer func(string) error, actionMainStorerObjects func(string) error) error {
+	msObjs, err := mainStorer.GetObjMap()
+	if err != nil {
+		return err
+	}
+
+	osObjs, err := objStorer.GetObjMap()
+	if err != nil {
+		return err
+	}
+
+	submissions, err := mainStorer.GetSubmissionMap()
+	if err != nil {
+		return err
+	}
+
+	t := time.Now().Add(-time.Hour)
+	//check whether all objects in objStorer are in the database
+	for obj, objt := range osObjs {
+		if t.Before(objt) {
+			log.Printf("%s (%s) too recent\n", obj, objt)
+			continue
+		}
+		_, exists := msObjs[obj]
+		if !exists {
+			err = actionObjStorer(obj)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	log.Println("checking mainStorer")
+	//check whether all objects in the database are in the objStorer
+	for obj := range msObjs {
+		objt, exists := submissions[obj]
+		if !exists {
+			err = actionMainStorerObjects(obj)
+			if err != nil {
+				return err
+			}
+			continue // TODO: make sure that when removing them, no new orphans are created
+		}
+		osObjs[obj] = objt
+
+		if t.Before(objt) {
+			log.Printf("%s (%s) too recent\n", obj, objt)
+			continue
+		}
+		_, exists = osObjs[obj]
+		if !exists {
+			err = actionMainStorer(obj)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// orphans are defined as:
-	//   1. samples in the objstorer with no corresponding object in the database
+	//   1. samples in the objstorer with no corresponding object in the mainStorer
 	orphansObjStorer := make([]string, 0)
-	//   2. objects in the database with no corresponding sample in the objstorer
-	orphansDatabase := make([]string, 0)
-	//   3. objects in the database with no corresponding submissions
-	//orphansDatabaseObjects := make([]string, 0) TODO
-	//   4. submissions in the database with no corresponding objects
-	//orphansDatabaseSubmissions := make([]string, 0) TODO
+	//   2. objects in the mainStorer with no corresponding sample in the objStorer
+	orphansMainStorer := make([]string, 0)
+	//   3. objects in the mainStorer with no corresponding submissions
+	orphansMainStorerObjects := make([]string, 0)
+	//   4. submissions in the mainStorer with no corresponding objects in the mainStorer
+	//orphansMainStorerSubmissions := make([]string, 0) TODO
 	// To avoid trouble with currently uploaded samples, the following workflow is implemented:
-	// Get database object-list       -> d1
-	// Get object storer list         -> o
-	// Get database object-list again -> d2
-	// Compare d2 and o to find samples that are in the object storer but not in the database
-	// Compare o and d1 to find samples that are in the database but not in the object storer
-	d1, err := mainStorer.GetObjMap()
-	if err != nil {
-		httpFailure(w, r, err)
-	}
+	// Samples are extracted from objStorer and from mainStorer with corresponding
+	// timestamp of last modified time.
+	// Only those that are at least an hour old are checked.
 
-	o, err := objStorer.GetObjMap()
+	err := httpGetOrphans(
+		func(sha string) error { orphansObjStorer = append(orphansObjStorer, sha); return nil },
+		func(sha string) error { orphansMainStorer = append(orphansMainStorer, sha); return nil },
+		func(sha string) error { orphansMainStorerObjects = append(orphansMainStorerObjects, sha); return nil },
+	)
 	if err != nil {
 		httpFailure(w, r, err)
-	}
-
-	d2, err := mainStorer.GetObjMap()
-	if err != nil {
-		httpFailure(w, r, err)
-	}
-	//check whether all objects in objStorer are in the database
-	for obj := range o {
-		_, exists := d2[obj]
-		if !exists {
-			orphansObjStorer = append(orphansObjStorer, obj)
-		}
-	}
-	//check whether all objects in the database are in the objStorer
-	for obj := range d1 {
-		_, exists := o[obj]
-		if !exists {
-			orphansDatabase = append(orphansDatabase, obj)
-		}
 	}
 
 	orphansM, err := json.Marshal(
@@ -355,7 +396,7 @@ func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 			Database  []string
 		}{
 			Objstorer: orphansObjStorer,
-			Database:  orphansDatabase,
+			Database:  orphansMainStorer,
 		})
 	if err != nil {
 		httpFailure(w, r, err)
@@ -366,39 +407,19 @@ func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Param
 }
 
 func httpDeleteOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	d1, err := mainStorer.GetObjMap()
-	if err != nil {
-		httpFailure(w, r, err)
-	}
-
-	o, err := objStorer.GetObjMap()
-	if err != nil {
-		httpFailure(w, r, err)
-	}
-
-	d2, err := mainStorer.GetObjMap()
-	if err != nil {
-		httpFailure(w, r, err)
-	}
-	//check whether all objects in objStorer are in the database
-	for obj := range o {
-		_, exists := d2[obj]
-		if !exists {
-			// delete obj from o
-			sample, err := objStorer.GetSample(obj)
+	err := httpGetOrphans(
+		func(sha string) error {
+			sample, err := objStorer.GetSample(sha)
 			if err != nil {
-				httpFailure(w, r, err)
+				return err
 			}
-			objStorer.DeleteSample(sample)
-		}
-	}
-	//check whether all objects in the database are in the objStorer
-	for obj := range d1 {
-		_, exists := o[obj]
-		if !exists {
-			// delete obj from d1
-			mainStorer.DeleteObject(obj)
-		}
+			return objStorer.DeleteSample(sample)
+		},
+		func(sha string) error { return mainStorer.DeleteObject(sha) },
+		func(sha string) error { return nil /*TODO*/ },
+	)
+	if err != nil {
+		httpFailure(w, r, err)
 	}
 }
 

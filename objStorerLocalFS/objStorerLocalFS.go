@@ -99,11 +99,18 @@ func (s ObjStorerLocalFS) GetObjMap() (map[string]time.Time, error) {
 		return nil, err
 	}
 	os.Chdir(s.StorageLocation)
+	defer os.Chdir(wd)
 	ret, err := filepath.Glob("*")
-	os.Chdir(wd)
+	if err != nil {
+		return nil, err
+	}
 	retM := make(map[string]time.Time)
 	for _, i := range ret {
-		retM[i] = time.Now() //TODO!!!
+		info, err := os.Stat(i)
+		if err != nil {
+			return nil, err
+		}
+		retM[i] = info.ModTime()
 	}
 	return retM, err
 }

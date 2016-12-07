@@ -164,7 +164,7 @@ func (s StorerMongoDB) GetObjMap() (map[string]time.Time, error) {
 	iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true}).Iter()
 	result := bson.M{}
 	for iter.Next(&result) {
-		shas[result["sha256"].(string)] = time.Now() //TODO!!!
+		shas[result["sha256"].(string)] = time.Time{} //TODO!!!
 	}
 
 	err := iter.Close()
@@ -176,11 +176,15 @@ func (s StorerMongoDB) GetSubmissionMap() (map[string]time.Time, error) {
 	shas := make(map[string]time.Time)
 	var sha256 string
 	var date time.Time
+	var err error
 	iter := s.DB.C("submissions").Find(nil).Select(bson.M{"sha256": true, "date": true}).Iter()
 	result := bson.M{}
 	for iter.Next(&result) {
 		sha256 = result["sha256"].(string)
-		date = result["date"].(time.Time)
+		date, err = time.Parse(time.RFC3339, result["date"].(string))
+		if err != nil {
+			return nil, err
+		}
 		val, exists := shas[sha256]
 		if !exists {
 			shas[sha256] = date
@@ -192,7 +196,7 @@ func (s StorerMongoDB) GetSubmissionMap() (map[string]time.Time, error) {
 
 	}
 
-	err := iter.Close()
+	err = iter.Close()
 
 	return shas, err
 }

@@ -373,7 +373,7 @@ func (s StorerCassandra) GetObjMap() (map[string]time.Time, error) {
 	for iter.Scan(
 		&sha256,
 	) {
-		shas[sha256] = time.Now() //TODO
+		shas[sha256] = time.Time{} //TODO
 	}
 
 	err := iter.Close()
@@ -387,7 +387,7 @@ func (s StorerCassandra) GetSubmissionMap() (map[string]time.Time, error) {
 	sha256 := ""
 	var date time.Time
 
-	iter := s.DB.Query(`SELECT sha256, date FROM objects`).Iter()
+	iter := s.DB.Query(`SELECT sha256, date FROM submissions`).Iter()
 	for iter.Scan(
 		&sha256,
 		&date,
