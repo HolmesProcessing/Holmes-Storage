@@ -1,11 +1,14 @@
 package main
 
 import (
+	"github.com/julienschmidt/httprouter"
 	types "github.com/ms-xy/Holmes-Planner-Monitor/go/msgtypes"
 	"github.com/ms-xy/Holmes-Planner-Monitor/go/server"
 
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -14,51 +17,57 @@ import (
 // and outgoing traffic.
 func initStatusModule(httpBinding string) {
 	router := &StatusRouter{
-		planners: make(map[uint64]*PlannerInformation),
+		machines: make(map[types.UUID]*SystemInformation),
 	}
-	server.ListenAndServe(httpBinding, router)
-	router.mainLoop(server.GetSessions())
+	server.ListenAndServe(httpBinding, router) // does not block
+
+	httprouter := httprouter.New()
+	httprouter.GET("/status/get_uuids", router.httpGetUuids)
+	httprouter.GET("/status/get_plannernames", router.httpGetPlannerNames)
+	httprouter.GET("/status/get_sysinfo/:uuid", router.httpGetSysinfo)
+	go func() {
+		fmt.Println(http.ListenAndServe(httpBinding, httprouter))
+	}()
+
+	router.mainLoop() // does block
+	// TODO: unify the way functions block
 }
 
-// Data structures containing information about a planner
+// Data structures containing information about all planners and their services
+// on a single machine, identified by its uuid.
+// Planners are identified by the process ID that they inhabit. This way we can
+// also keep track of planners that died and potentially restarted using a
+// different PID shortly after (logs could potentially indicate this too).
+// Similarily the services that accompany a planner are reported as children of
+// that very planner, mapped by their respective port numbers.
+type SystemInformation struct {
+	SystemStatus  *types.SystemStatus
+	NetworkStatus *types.NetworkStatus
+	Planners      map[uint64]*PlannerInformation
+}
+
 type PlannerInformation struct {
+	Name          string
+	PID           uint64
 	IP            net.IP
 	Port          int
 	Configuration string
 	Logs          *LogBuffer
-	Status        struct {
-		System struct {
-			Uptime      time.Time
-			CPULoad     float64
-			MemoryUsage uint64
-			MemoryMax   uint64
-			DiskSpace   []*DiskSpaceInformation
-			Load1s      float64
-			Load5s      float64
-			Load15s     float64
-		}
-		Network struct {
-			// TODO determine layout - probably best place to do that is the protobuf
-		}
-		Services []*ServiceInformation
-	}
-}
-
-type DiskSpaceInformation struct {
-	Identifier string
-	Used       uint64
-	Total      uint64
+	Services      map[uint16]*ServiceInformation
 }
 
 type ServiceInformation struct {
 	Configuration string
 	Name          string
-	IP            uint16
+	Port          uint16
 	Task          string
 	Logs          *LogBuffer
 }
 
-// A simple log buffer, discards old messages if to make space for new ones
+// A simple log buffer, discards old messages if to make space for new ones.
+// This is only a temporary solution, as in the end the database
+// will be responsible for saving logs and tombstones in Cassandra
+// make it a lot easier.
 func NewDefaultLogBuffer() *LogBuffer {
 	return NewLogBuffer(0x400) // 1024 lines
 }
@@ -116,13 +125,14 @@ func (this *LogBuffer) GetLastN(n int) []string {
 // search operations (e.g. collect orphaned sessions)
 type StatusRouter struct {
 	sync.Mutex
-	planners map[uint64]*PlannerInformation
+	machines map[types.UUID]*SystemInformation
 }
 
 // Loop for doing all the regular checks on sessions
 // Including but not limited to checks if sessions are still to be considered
 // alive and functioning or if an error should be issued
-func (this *StatusRouter) mainLoop(sessions *server.SessionMap) {
+func (this *StatusRouter) mainLoop() {
+	sessions := server.GetSessions()
 	for range time.Tick(5 * time.Second) {
 		go this.runLivelinessCheck(sessions)
 	}
@@ -138,46 +148,180 @@ func (this *StatusRouter) runLivelinessCheck(sessions *server.SessionMap) {
 	tMinus30s := time.Now().Add(-30 * time.Second)
 	sessions.ForEach(func(s *server.Session) {
 		if s.LastSeen.Before(tMinus30s) {
-			fmt.Println("==> malfunctioning node:", s.GetID(), s.GetAddress())
+			fmt.Println("==> malfunctioning node:", s.GetUuid().ToString(), s.Address)
 		} else {
-			fmt.Println("==> node alive:", s.GetID(), s.GetAddress())
+			fmt.Println("==> node alive:", s.GetUuid().ToString(), s.Address)
 		}
 	})
 }
 
 // Implement server.StatusRouter interface for our StatusRouter:
-func (this *StatusRouter) RecvPlannerInfo(plannerinfo *types.PlannerInfo, client *server.Session, isnew bool) *types.ControlMessage {
+func (this *StatusRouter) RecvPlannerInfo(plannerinfo *types.PlannerInfo, session *server.Session, pid uint64) (cm *types.ControlMessage) {
 	if plannerinfo.Disconnect {
-		client.Close()
-		return &types.ControlMessage{AckDisconnect: true}
+		session.Close()
+		delete(this.machines, *session.GetUuid())
+		cm = &types.ControlMessage{AckDisconnect: true}
 
 	} else if plannerinfo.Connect {
-		// TODO: any special action for an entirely new client?
+		var (
+			si     *SystemInformation
+			pi     *PlannerInformation
+			exists bool
+			uuid   = session.GetUuid()
+		)
 
+		if si, exists = this.machines[*uuid]; !exists {
+			si = &SystemInformation{
+				SystemStatus:  &types.SystemStatus{},
+				NetworkStatus: &types.NetworkStatus{},
+				Planners:      make(map[uint64]*PlannerInformation),
+			}
+			this.machines[*uuid] = si
+		}
+
+		if pi, exists = si.Planners[pid]; !exists {
+			pi = &PlannerInformation{
+				Name: plannerinfo.Name,
+				PID:  pid,
+				IP:   plannerinfo.ListenAddress.IP,
+				Port: plannerinfo.ListenAddress.Port,
+				Logs: NewDefaultLogBuffer(),
+			}
+			si.Planners[pid] = pi
+
+		} else {
+			if plannerinfo.Name != "" {
+				pi.Name = plannerinfo.Name
+			}
+			if plannerinfo.ListenAddress.IP != nil {
+				pi.IP = plannerinfo.ListenAddress.IP
+			}
+			if plannerinfo.ListenAddress.Port > 0 {
+				pi.Port = plannerinfo.ListenAddress.Port
+			}
+		}
+
+		cm = &types.ControlMessage{AckConnect: true}
 	}
-	return &types.ControlMessage{AckConnect: true}
+	return
 }
 
-func (this *StatusRouter) RecvSystemStatus(systemstatus *types.SystemStatus, client *server.Session, isnew bool) *types.ControlMessage {
-	fmt.Println(systemstatus)
-	return nil
+func (this *StatusRouter) RecvSystemStatus(systemstatus *types.SystemStatus, session *server.Session, pid uint64) (cm *types.ControlMessage) {
+	if si, exists := this.machines[*session.GetUuid()]; exists {
+		si.SystemStatus = systemstatus
+	} else {
+		warning.Println("Received SystemStatus for an unregistered planner:", session.GetUuid().ToString(), pid, session.Address)
+	}
+	return
 }
 
-func (this *StatusRouter) RecvNetworkStatus(networkstatus *types.NetworkStatus, client *server.Session, isnew bool) *types.ControlMessage {
-	fmt.Println(networkstatus)
-	return nil
+func (this *StatusRouter) RecvNetworkStatus(networkstatus *types.NetworkStatus, session *server.Session, pid uint64) (cm *types.ControlMessage) {
+	if si, exists := this.machines[*session.GetUuid()]; exists {
+		si.NetworkStatus = networkstatus
+	} else {
+		warning.Println("Received NetworkStatus for an unregistered planner:", session.GetUuid().ToString(), pid, session.Address)
+	}
+	return
 }
 
-func (this *StatusRouter) RecvPlannerStatus(plannerstatus *types.PlannerStatus, client *server.Session, isnew bool) *types.ControlMessage {
-	fmt.Println(plannerstatus)
-	return nil
+func (this *StatusRouter) RecvPlannerStatus(plannerstatus *types.PlannerStatus, session *server.Session, pid uint64) (cm *types.ControlMessage) {
+	if si, exists := this.machines[*session.GetUuid()]; exists {
+		if pi, exists := si.Planners[pid]; exists {
+			pi.Configuration = plannerstatus.ConfigProfileName
+			pi.Logs.Append(plannerstatus.Logs)
+		}
+	} else {
+		warning.Println("Received PlannerStatus for an unregistered planner:", session.GetUuid().ToString(), pid, session.Address)
+	}
+	return
 }
 
-func (this *StatusRouter) RecvServiceStatus(servicestatus *types.ServiceStatus, client *server.Session, isnew bool) *types.ControlMessage {
-	fmt.Println(servicestatus)
-	return nil
+func (this *StatusRouter) RecvServiceStatus(servicestatus *types.ServiceStatus, session *server.Session, pid uint64) (cm *types.ControlMessage) {
+	// TODO: implement
+	return
 }
 
-func (this *StatusRouter) HandleError(err error, client *server.Session, isnew bool) {
+func (this *StatusRouter) HandleError(err error, session *server.Session, pid uint64) {
 	fmt.Println(err)
+}
+
+// ----------- functions for serving the web api ---------------------------- //
+
+type StatusWebAPI_Session struct {
+	Session *server.Session
+	Info    *PlannerInformation
+}
+
+func (this *StatusRouter) httpGetPlannerNames(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	sessions := server.GetSessions()
+
+	i := 0
+	size := sessions.Size()
+	names_map := make(map[string]bool)
+	names := make([]string, size)
+
+	sessions.ForEach(func(session *server.Session) {
+		si := this.machines[*session.GetUuid()]
+		for _, pi := range si.Planners {
+			if _, exists := names_map[pi.Name]; !exists {
+				names_map[pi.Name] = true
+				if i < size {
+					names[i] = pi.Name
+					i++
+				} else {
+					names = append(names, pi.Name)
+				}
+			}
+		}
+	})
+
+	httpSendJson(w, names)
+}
+
+func (this *StatusRouter) httpGetUuids(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	sessions := server.GetSessions()
+
+	i := 0
+	size := sessions.Size()
+	uuids := make([]string, size)
+
+	sessions.ForEach(func(session *server.Session) {
+		uuid := session.GetUuid()
+		if i < size {
+			uuids[i] = uuid.ToString()
+			i++
+		} else {
+			uuids = append(uuids, uuid.ToString())
+		}
+	})
+
+	httpSendJson(w, uuids)
+}
+
+func (this *StatusRouter) httpGetSysinfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	sessions := server.GetSessions()
+
+	if uuid, err := types.UUIDFromString(ps.ByName("uuid")); err == nil {
+
+		if session, exists := sessions.GetByUuid(uuid); exists {
+			si := this.machines[*session.GetUuid()]
+			httpSendJson(w, si.SystemStatus)
+
+		} else {
+			http.Error(w, "unknown uuid: "+uuid.ToString(), 404)
+		}
+
+	} else {
+		http.Error(w, "invalid uuid: "+err.Error(), 404)
+	}
+}
+
+func httpSendJson(w http.ResponseWriter, data interface{}) {
+	json, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	} else {
+		w.Header().Set("Content-Type", "text/json")
+		w.Write(json)
+	}
 }
