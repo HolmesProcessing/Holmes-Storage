@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -175,6 +174,8 @@ func httpSampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 // indicating if the sample file was already known (resubmitted) and an error.
 func httpStoreEverything(submission *storerGeneric.Submission, object *storerGeneric.Object, sample *objStorerGeneric.Sample) (bool, error) {
 	// save structs to db
+
+	// IMPORTANT for orphanCleaner: store submission before storing the object to mainStorer
 	err := mainStorer.StoreSubmission(submission)
 	if err != nil {
 		return false, err
@@ -305,122 +306,158 @@ func httpMainStorerGetObjs(w http.ResponseWriter, r *http.Request, ps httprouter
 	httpReturnObjs(w, r, ps, objs, err)
 }
 
-// httpGetOrphans identifies the orphans and executes the given action-functions
-// for each orphan.
-func httpGetOrphans(actionObjStorer func(string) error, actionMainStorer func(string) error, actionMainStorerObjects func(string) error) error {
-	msObjs, err := mainStorer.GetObjMap()
+// httpGetOrphans identifies the orphans and executes the given action-function
+// for each orphan. For each sample exactly one of the actions is executed.
+// Samples & submissions that only exist for an hour, yet, are ignored.
+// The corresponding action-function gets as a parameter the sha256-value of the sample.
+// The mnemonics of the action-parameters are as follows:
+// O: sample is in objStorer
+// M: sample is in mainStorer-objects
+// S: sample is in mainStorer-submissions
+// i.e. actionMS is executed, if a sample is only in mainStorer-objects (M) and mainStorer-submissions (S), but not in objStorer.
+func httpGetOrphans(actionOMS func(string), actionOM func(string), actionOS func(string), actionO func(string), actionMS func(string), actionM func(string), actionS func(string)) error {
+	MObjs, err := mainStorer.GetObjMap()
 	if err != nil {
 		return err
 	}
 
-	osObjs, err := objStorer.GetObjMap()
+	OObjs, err := objStorer.GetObjMap()
 	if err != nil {
 		return err
 	}
 
-	submissions, err := mainStorer.GetSubmissionMap()
+	SObjs, err := mainStorer.GetSubmissionMap()
 	if err != nil {
 		return err
 	}
 
-	t := time.Now().Add(-time.Hour)
-	//check whether all objects in objStorer are in the database
-	for obj, objt := range osObjs {
-		if t.Before(objt) {
-			log.Printf("%s (%s) too recent\n", obj, objt)
-			continue
-		}
-		_, exists := msObjs[obj]
-		if !exists {
-			err = actionObjStorer(obj)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	log.Println("checking mainStorer")
-	//check whether all objects in the database are in the objStorer
-	for obj := range msObjs {
-		objt, exists := submissions[obj]
-		if !exists {
-			err = actionMainStorerObjects(obj)
-			if err != nil {
-				return err
-			}
-			continue // TODO: make sure that when removing them, no new orphans are created
-		}
-		osObjs[obj] = objt
+	//t := time.Now().Add(-time.Hour) //TODO: uncomment!!!
+	t := time.Now()
 
-		if t.Before(objt) {
-			log.Printf("%s (%s) too recent\n", obj, objt)
-			continue
-		}
-		_, exists = osObjs[obj]
-		if !exists {
-			err = actionMainStorer(obj)
-			if err != nil {
-				return err
+	// check objects from objStorer against mainStorer-objects and submissions
+	for obj, objt := range OObjs {
+		recent := t.Before(objt)
+
+		if !recent {
+			_, existsM := MObjs[obj]
+			if existsM {
+				_, existsS := SObjs[obj]
+				if existsS {
+					actionOMS(obj)
+				} else {
+					actionOM(obj)
+				}
+			} else {
+				_, existsS := SObjs[obj]
+				if existsS {
+					actionOS(obj)
+				} else {
+					actionO(obj)
+				}
 			}
 		}
+		// delete(OObjs, obj)
+		delete(MObjs, obj)
+		delete(SObjs, obj)
+	}
+
+	// all objects still in MObjs and SObjs are not in the objStorer
+	for obj, objt := range SObjs {
+		recent := t.Before(objt)
+
+		if !recent {
+			_, existsM := MObjs[obj]
+			if existsM {
+				actionMS(obj)
+			} else {
+				actionS(obj)
+			}
+		}
+		// delete(SObjs, obj)
+		delete(MObjs, obj)
+	}
+
+	// all remaining objects are only in MObjs
+	for obj, _ := range MObjs {
+		actionM(obj)
+		// delete(MObjs, obj)
 	}
 	return nil
 }
 
 func httpListOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// orphans are defined as:
-	//   1. samples in the objstorer with no corresponding object in the mainStorer
-	orphansObjStorer := make([]string, 0)
-	//   2. objects in the mainStorer with no corresponding sample in the objStorer
-	orphansMainStorer := make([]string, 0)
-	//   3. objects in the mainStorer with no corresponding submissions
-	orphansMainStorerObjects := make([]string, 0)
-	//   4. submissions in the mainStorer with no corresponding objects in the mainStorer
-	//orphansMainStorerSubmissions := make([]string, 0) TODO
+	// all samples must have an entry in the objStorer, in the mainStorer-objects,
+	// and (at least one) in the mainStorer-submissions
+
+	orphansOM := make([]string, 0)
+	orphansOS := make([]string, 0)
+	orphansO := make([]string, 0)
+	orphansMS := make([]string, 0)
+	orphansM := make([]string, 0)
+	orphansS := make([]string, 0)
+
 	// To avoid trouble with currently uploaded samples, the following workflow is implemented:
 	// Samples are extracted from objStorer and from mainStorer with corresponding
 	// timestamp of last modified time.
 	// Only those that are at least an hour old are checked.
 
 	err := httpGetOrphans(
-		func(sha string) error { orphansObjStorer = append(orphansObjStorer, sha); return nil },
-		func(sha string) error { orphansMainStorer = append(orphansMainStorer, sha); return nil },
-		func(sha string) error { orphansMainStorerObjects = append(orphansMainStorerObjects, sha); return nil },
+		func(sha string) {},                                     //actionOMS
+		func(sha string) { orphansOM = append(orphansOM, sha) }, //actionOM
+		func(sha string) { orphansOS = append(orphansOS, sha) }, //actionOS
+		func(sha string) { orphansO = append(orphansO, sha) },   //actionO
+		func(sha string) { orphansMS = append(orphansMS, sha) }, //actionMS
+		func(sha string) { orphansM = append(orphansM, sha) },   //actionM
+		func(sha string) { orphansS = append(orphansS, sha) },   //actionS
 	)
 	if err != nil {
 		httpFailure(w, r, err)
 	}
 
-	orphansM, err := json.Marshal(
+	orphans, err := json.Marshal(
 		struct {
-			Objstorer []string
-			Database  []string
+			OM []string
+			OS []string
+			O  []string
+			MS []string
+			M  []string
+			S  []string
 		}{
-			Objstorer: orphansObjStorer,
-			Database:  orphansMainStorer,
+			OM: orphansOM,
+			OS: orphansOS,
+			O:  orphansO,
+			MS: orphansMS,
+			M:  orphansM,
+			S:  orphansS,
 		})
 	if err != nil {
 		httpFailure(w, r, err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(orphansM)
+	w.Write(orphans)
 }
 
 func httpDeleteOrphans(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	err := httpGetOrphans(
-		func(sha string) error {
-			sample, err := objStorer.GetSample(sha)
-			if err != nil {
-				return err
-			}
-			return objStorer.DeleteSample(sample)
-		},
-		func(sha string) error { return mainStorer.DeleteObject(sha) },
-		func(sha string) error { return nil /*TODO*/ },
+		func(sha string) {}, //actionOMS
+		func(sha string) {
+			objStorer.DeleteSampleWithId(sha)
+			mainStorer.DeleteObject(sha)
+		}, //actionOM
+		func(sha string) {
+			objStorer.DeleteSampleWithId(sha)
+			mainStorer.DeleteAllSubmissionsOfObject(sha)
+		}, //actionOS
+		func(sha string) { mainStorer.DeleteObject(sha) },                 //actionO
+		func(sha string) { mainStorer.DeleteSampleAndSubmissions(sha) },   //actionMS
+		func(sha string) { mainStorer.DeleteObject(sha) },                 //actionM
+		func(sha string) { mainStorer.DeleteAllSubmissionsOfObject(sha) }, //actionS
 	)
 	if err != nil {
 		httpFailure(w, r, err)
 	}
+	w.Write([]byte("OK"))
 }
 
 // httpErrorCode sends an HTTP Error back as a response to the request.

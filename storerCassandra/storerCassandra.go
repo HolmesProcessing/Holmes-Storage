@@ -516,6 +516,15 @@ func (s StorerCassandra) GetSubmissionsByObject(sha256 string) ([]*storerGeneric
 	return submissions, err
 }
 
+func (s StorerCassandra) DeleteAllSubmissionsOfObject(id string) error {
+	return s.DB.Query(`DELETE FROM submissions WHERE sha256 = ?`, id).Exec()
+}
+
+func (s StorerCassandra) DeleteSampleAndSubmissions(id string) {
+	s.DeleteObject(id)
+	s.DeleteAllSubmissionsOfObject(id)
+}
+
 func (s StorerCassandra) StoreResult(result *storerGeneric.Result) error {
 	id, err := gocql.RandomUUID()
 	if err != nil {

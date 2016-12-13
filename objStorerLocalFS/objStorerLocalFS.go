@@ -67,7 +67,11 @@ func (s ObjStorerLocalFS) Setup() error {
 }
 
 func (s ObjStorerLocalFS) DeleteSample(sample *objStorerGeneric.Sample) error {
-	path := filepath.Join(s.StorageLocation, sample.SHA256)
+	return s.DeleteSampleWithId(sample.SHA256)
+}
+
+func (s ObjStorerLocalFS) DeleteSampleWithId(id string) error {
+	path := filepath.Join(s.StorageLocation, id)
 	err := os.Remove(path)
 	return err
 }

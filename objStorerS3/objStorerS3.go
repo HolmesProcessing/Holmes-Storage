@@ -76,9 +76,13 @@ func (s ObjStorerS3) Setup() error {
 }
 
 func (s ObjStorerS3) DeleteSample(sample *objStorerGeneric.Sample) error {
+	return s.DeleteSampleWithId(sample.SHA256)
+}
+
+func (s ObjStorerS3) DeleteSampleWithId(id string) error {
 	_, err := s.DB.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: &s.Bucket,
-		Key:    &sample.SHA256,
+		Key:    &id,
 	})
 
 	return err

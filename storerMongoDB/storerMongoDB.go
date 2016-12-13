@@ -267,7 +267,15 @@ func (s StorerMongoDB) GetSubmissionsByObject(sha256 string) []*Submission {
 	submissions := []*Submission{}
 	s.DB.C("submissions").Find(bson.M{"sha256": sha256}).All(&submissions)
 	return submissions
+}
 
+func (s StorerMongoDB) DeleteAllSubmissionsOfObject(id string) error {
+	return s.DB.C("submissions").Remove(bson.M{"sha256": id})
+}
+
+func (s StorerMongoDB) DeleteSampleAndSubmissions(id string) {
+	s.DeleteObject(id)
+	s.DeleteAllSubmissionsOfObject(id)
 }
 
 func (s StorerMongoDB) StoreResult(result *storerGeneric.Result) error {

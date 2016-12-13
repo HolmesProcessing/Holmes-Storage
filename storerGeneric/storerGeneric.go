@@ -47,7 +47,12 @@ type Storer interface {
 
 	StoreSubmission(*Submission) error
 	DeleteSubmission(string) error
+	DeleteAllSubmissionsOfObject(string) error
 	GetSubmission(string) (*Submission, error)
+
+	// Delete a sample and all of its submissions (the sample neither has
+	// to be in the objects-table nor in the submissions-table)
+	DeleteSampleAndSubmissions(string)
 
 	// Stores a result in the database
 	// (TODO: return generated Id)

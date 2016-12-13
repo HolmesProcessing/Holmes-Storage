@@ -39,6 +39,7 @@ type ObjStorer interface {
 
 	// Delete a sample from the database
 	DeleteSample(*Sample) error
+	DeleteSampleWithId(string) error
 
 	// Get a map of all the sha256-values of the objects to their corresponding upload-time
 	GetObjMap() (map[string]time.Time, error)
