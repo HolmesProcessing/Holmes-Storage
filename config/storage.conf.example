@@ -1,0 +1,53 @@
+{
+	"DataStorage": [
+		{
+			"Engine":   "Cassandra",
+			"IP":       "10.0.4.1",
+			"Port":     9042,
+			"User":     "holmes",
+			"Password": "secure123456",
+			"Database": "holmes",
+			"Secure":   true
+		}, {
+			"Engine":   "Cassandra",
+			"IP":       "10.0.4.2",
+			"Port":     9042,
+			"User":     "holmes",
+			"Password": "secure123456",
+			"Database": "holmes",
+			"Secure":   true
+		}, {
+			"Engine":   "Cassandra",
+			"IP":       "10.0.4.3",
+			"Port":     9042,
+			"User":     "holmes",
+			"Password": "secure123456",
+			"Database": "holmes",
+			"Secure":   true
+		}
+	],
+	"ObjectStorage": [
+		{
+			"Engine": "S3",
+			"IP":     "10.0.4.4",
+			"Port":   8080,
+			"Region": "US",
+			"Key":    "SECRETKEY",
+			"Secret": "SECRETSECRET==",
+			"Bucket": "samples",
+			"Secure": true
+		}
+	],
+
+	"LogFile": "",
+	"LogLevel": "debug",
+
+	"AMQP": "amqp://holmes:amqpPassword@10.0.4.5:5672",
+	"Queue": "totem_output",
+	"RoutingKey": "*.result.static.totem",
+	"PrefetchCount": 10,
+
+	"HTTP": ":8016",
+	"SSLCert": "/path/to/crt",
+	"SSLKey": "/path/to/key"
+}
