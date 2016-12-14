@@ -123,7 +123,7 @@ func (s ObjStorerS3) GetObjMap() (map[string]time.Time, error) {
 	// ListObjects can only get a max of 1000 objs, so we need to do this in a loop
 	cont := true
 	params := &s3.ListObjectsInput{
-		Bucket:  aws.String("holmes"),
+		Bucket:  aws.String(s.Bucket),
 		MaxKeys: aws.Int64(1000),
 	}
 	for cont {
@@ -138,7 +138,7 @@ func (s ObjStorerS3) GetObjMap() (map[string]time.Time, error) {
 		params.Marker = resp.Contents[len(resp.Contents)-1].Key
 		cont = *resp.IsTruncated
 	}
-	log.Println(len(retM))
+	//log.Println(len(retM))
 	return retM, nil
 }
 

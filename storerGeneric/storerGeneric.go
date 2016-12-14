@@ -38,6 +38,7 @@ type Storer interface {
 	DeleteObject(string) error
 	GetObject(string) (*Object, error)
 	GetObjMap() (map[string]time.Time, error)
+	GetObjIterator() func(*string, *time.Time) bool
 	// Map the SHA256 to the first submission
 	GetSubmissionMap() (map[string]time.Time, error)
 

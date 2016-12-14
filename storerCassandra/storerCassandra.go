@@ -369,17 +369,51 @@ func (s StorerCassandra) GetObjMap() (map[string]time.Time, error) {
 	shas := make(map[string]time.Time)
 	sha256 := ""
 
+	//TODO: When the objects-table gets the created_date_time-column, replace
+	//      the following block with the corresponding commented block below.
+
 	iter := s.DB.Query(`SELECT sha256 FROM objects`).Iter()
-	for iter.Scan(
-		&sha256,
-	) {
-		shas[sha256] = time.Time{} //TODO
+	for iter.Scan(&sha256) {
+		shas[sha256] = time.Time{}
 	}
+
+	/*
+		var t time.Time
+		iter := s.DB.Query(`SELECT sha256, created_date_time FROM objects`).Iter()
+		for iter.Scan(&sha256, &t) {
+			shas[sha256] = t
+		}
+	*/
 
 	err := iter.Close()
 
 	return shas, err
+}
 
+func (s StorerCassandra) GetObjIterator() func(*string, *time.Time) bool {
+
+	//TODO: When the objects-table gets the created_date_time-column, replace
+	//      the following block with the corresponding commented block below.
+
+	iter := s.DB.Query(`SELECT sha256 FROM objects`).Iter()
+	return func(sha256 *string, t *time.Time) bool {
+		if iter.Scan(sha256) {
+			*t = time.Time{}
+			return true
+		}
+		iter.Close()
+		return false
+	}
+	/*
+		iter := s.DB.Query(`SELECT sha256, created_date_time FROM objects`).Iter()
+		return func(sha256 *string, t *time.Time) bool {
+			if iter.Scan(sha256, t) {
+				return true
+			}
+			iter.Close()
+			return false
+		}
+	*/
 }
 
 func (s StorerCassandra) GetSubmissionMap() (map[string]time.Time, error) {
@@ -464,10 +498,11 @@ func (s StorerCassandra) DeleteSubmission(id string) error {
 	if err != nil {
 		return err
 	}
+	return s.DeleteSubmissionUUID(uuid)
+}
 
-	err = s.DB.Query(`DELETE FROM submissions WHERE id = ?`, uuid).Exec()
-
-	return err
+func (s StorerCassandra) DeleteSubmissionUUID(uuid gocql.UUID) error {
+	return s.DB.Query(`DELETE FROM submissions WHERE id = ?`, uuid).Exec()
 }
 
 func (s StorerCassandra) GetSubmission(id string) (*storerGeneric.Submission, error) {
@@ -516,8 +551,16 @@ func (s StorerCassandra) GetSubmissionsByObject(sha256 string) ([]*storerGeneric
 	return submissions, err
 }
 
-func (s StorerCassandra) DeleteAllSubmissionsOfObject(id string) error {
-	return s.DB.Query(`DELETE FROM submissions WHERE sha256 = ?`, id).Exec()
+func (s StorerCassandra) DeleteAllSubmissionsOfObject(sha256 string) error {
+	var uuid gocql.UUID
+	iter := s.DB.Query(`SELECT id FROM submissions WHERE sha256 = ?`, sha256).Iter()
+	for iter.Scan(&uuid) {
+		err := s.DB.Query(`DELETE FROM submissions WHERE id = ?`, uuid).Exec()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s StorerCassandra) DeleteSampleAndSubmissions(id string) {

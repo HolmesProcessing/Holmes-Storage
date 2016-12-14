@@ -161,15 +161,57 @@ func (s StorerMongoDB) GetObject(id string) (*storerGeneric.Object, error) {
 
 func (s StorerMongoDB) GetObjMap() (map[string]time.Time, error) {
 	shas := make(map[string]time.Time)
-	iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true}).Iter()
 	result := bson.M{}
+
+	//TODO: When the objects-table gets the created_date_time-column, replace
+	//      the following block with the corresponding commented block below.
+
+	iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true}).Iter()
 	for iter.Next(&result) {
-		shas[result["sha256"].(string)] = time.Time{} //TODO!!!
+		shas[result["sha256"].(string)] = time.Time{}
 	}
+
+	/*
+		iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true, "created_date_time": true}).Iter()
+		for iter.Next(&result) {
+			shas[result["sha256"].(string)] = result["created_date_time"].(time.Time)
+		}
+	*/
 
 	err := iter.Close()
 
 	return shas, err
+}
+
+func (s StorerMongoDB) GetObjIterator() func(*string, *time.Time) bool {
+	result := bson.M{}
+
+	//TODO: When the objects-table gets the created_date_time-column, replace
+	//      the following block with the corresponding commented block below.
+
+	iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true}).Iter()
+	return func(sha256 *string, t *time.Time) bool {
+		if iter.Next(&result) {
+			*sha256 = result["sha256"].(string)
+			*t = time.Time{}
+			return true
+		}
+		iter.Close()
+		return false
+	}
+
+	/*
+		iter := s.DB.C("objects").Find(nil).Select(bson.M{"sha256": true, "created_date_time": true}).Iter()
+		return func(sha256 *string, t *time.Time) bool {
+			if iter.Next(&result) {
+				*sha256 = result["sha256"].(string)
+				*t = result["created_date_time"].(time.Time)
+				return true
+			}
+			iter.Close()
+			return false
+		}
+	*/
 }
 
 func (s StorerMongoDB) GetSubmissionMap() (map[string]time.Time, error) {
@@ -270,7 +312,8 @@ func (s StorerMongoDB) GetSubmissionsByObject(sha256 string) []*Submission {
 }
 
 func (s StorerMongoDB) DeleteAllSubmissionsOfObject(id string) error {
-	return s.DB.C("submissions").Remove(bson.M{"sha256": id})
+	_, err := s.DB.C("submissions").RemoveAll(bson.M{"sha256": id})
+	return err
 }
 
 func (s StorerMongoDB) DeleteSampleAndSubmissions(id string) {
