@@ -324,7 +324,10 @@ func httpMainStorerGetSubmissions(w http.ResponseWriter, r *http.Request, ps htt
 // S: sample is in mainStorer-submissions
 // i.e. actionMS is executed, if a sample is only in mainStorer-objects (M) and mainStorer-submissions (S), but not in objStorer.
 func httpGetOrphans(actionOMS func(string), actionOM func(string), actionOS func(string), actionO func(string), actionMS func(string), actionM func(string), actionS func(string)) error {
-	MObjs := mainStorer.GetObjIterator()
+	MObjs, err := mainStorer.GetObjMap()
+	if err != nil {
+		return err
+	}
 
 	OObjs, err := objStorer.GetObjMap()
 	if err != nil {
@@ -341,9 +344,7 @@ func httpGetOrphans(actionOMS func(string), actionOM func(string), actionOS func
 	// iterate over the mainStorer-objects and try to find in
 	// objStorer and mainStorer-submissions
 	// Discard, if any entry is younger than an hour
-	var objM string
-	var tM time.Time
-	for MObjs(&objM, &tM) {
+	for objM, tM := range MObjs {
 		if tM.Before(t) {
 			tO, existsO := OObjs[objM]
 			tS, existsS := SObjs[objM]

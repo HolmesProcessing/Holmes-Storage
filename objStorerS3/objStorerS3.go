@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/HolmesProcessing/Holmes-Storage/objStorerGeneric"
-	"log"
 )
 
 type ObjStorerS3 struct {
