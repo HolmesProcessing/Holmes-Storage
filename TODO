@@ -7,8 +7,10 @@ TODO:
 6) merge readme.md
     - add information on maintenance for cassandra: compaction, repair, multi-dc
     - warning on using Docker verses native
+    - add documentation for fakesS3 (or provide flat file store see #13)
 7) merge contrib.md
 8) add additional config options for cassandra
 9) merge proxy file for S3
 10) add mongodb code?
 12) add option to sent AMQP message on write for streaming
+13) merge code for flatfile storage? (see #6)
