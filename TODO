@@ -1,0 +1,14 @@
+TODO:
+1) finish data model for generic file type
+2) update SASI Index
+3) adjust interface.go for cassandra
+4) complete dockerfile
+5) port maintenance code 
+6) merge readme.md
+    - add information on maintenance for cassandra: compaction, repair, multi-dc
+    - warning on using Docker verses native
+7) merge contrib.md
+8) add additional config options for cassandra
+9) merge proxy file for S3
+10) add mongodb code?
+12) add option to sent AMQP message on write for streaming
