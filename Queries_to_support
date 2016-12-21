@@ -1,0 +1,11 @@
+The following are a list of queries that we regularly encounter. Based on this information we should validate the datamodels we are using.
+
+API
+1) Get Object
+2) Get result from a sha 
+3) Get results from a sha and service_name
+3) Get Submissions for an object
+
+ML
+1) Get all results from a service_name
+2) Get all objects from a mime type
