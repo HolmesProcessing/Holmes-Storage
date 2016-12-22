@@ -2,15 +2,27 @@ The following are a list of queries that we regularly encounter. Based on this i
 
 # API
 1) Result
+    - via UUID
+2) Results
     - via sha
-    - via sha and service name 
-2) Submission
-    - via objectname
-    - via time
-3) Object
-    - via unique identifier (sha256, string)
-4) Config
-
+    - via service name 
+    - via time range
+3) Submission
+    - via UUID
+4) Submissions
+    - vis sha [should we make everything sha256..i.e. domain, ip, etc all get a sha256?]
+    - via time_time range
+    - via source
+    - via tag?
+    - via user_id
+5) Object
+    - vis sha [should we make everything sha256..i.e. domain, ip, etc all get a sha256?]
+6) Objects
+    - via type [should we breakthis down to include file_mime, tld, domain_part, ip_v6?]
+    - via time range
+    - via source
+    - via user
+7) Config
 
 ## Proposed API scheme
 ### GET
