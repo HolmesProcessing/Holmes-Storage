@@ -1,5 +1,18 @@
 TODO:
-1) finish data model for generic file type
+1) finish data model
+    - add generic file type relative location for s3
+    - look at using TIMEUUID for timestamp when using sorting for Cassandra. 
+    - devise strategy for results.
+        PRIMARY KEY ((id, service_name), finished_date_time))
+	    WITH CLUSTERING ORDER BY (finished_date_time DESC)
+    - devise a strategy for submissions
+	    PRIMARY KEY ((id, type), first_submission_date_time))
+	    WITH CLUSTERING ORDER BY (first_submission_date_time DESC)
+    - devise a strategy for objects
+	    PRIMARY KEY ((id, source), date))
+	    WITH CLUSTERING ORDER BY (date_time DESC)
+
+
 2) update SASI Index
 3) adjust interface.go for cassandra
 4) complete dockerfile
@@ -7,10 +20,11 @@ TODO:
 6) merge readme.md
     - add information on maintenance for cassandra: compaction, repair, multi-dc
     - warning on using Docker verses native
-    - add documentation for fakesS3 (or provide flat file store see #13)
+    - add documentation for fakesS3
 7) merge contrib.md
 8) add additional config options for cassandra
 9) merge proxy file for S3
 10) add mongodb code?
 12) add option to sent AMQP message on write for streaming
-13) merge code for flatfile storage? (see #6)
+13) [drop support] remove all flatfile storage. This will add complexity for relative locations with generic files. Not impossible but keeping it simple is best. 
+
