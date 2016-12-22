@@ -15,18 +15,18 @@ The following are a list of queries that we regularly encounter. Based on this i
 ## Proposed API scheme
 ### GET
 Get one item back from the server
-* v2/object:sha256
-* v2/raw_data:sha256
+* v2/object/sha256
+* v2/raw_data/sha256
 * v2/result
 * v2/submission
 * v2/config
 
-* v2/search/objects
-* v2/search/results
-* v2/search/submissions
+* v2/objects?{mime}
+* v2/results?{sha256, service_name}
+* v2/submissions?{source, date}
 
 ### PATCH
-* v2/object:sha256
+* v2/object/sha256
 
 ### POST
 * v2/object
