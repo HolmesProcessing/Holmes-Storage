@@ -21,8 +21,8 @@ Get one item back from the server
 * v2/submission
 * v2/config
 
-* v2/objects?{mime}
-* v2/results?{sha256, service_name}
+* v2/objects?{uuid, [identifier], mime}
+* v2/results?{uuid, sha256, service_name}
 * v2/submissions?{source, date}
 
 ### PATCH
