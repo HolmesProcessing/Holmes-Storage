@@ -1,11 +1,46 @@
-The following are a list of queries that we regularly encounter. Based on this information we should validate the datamodels we are using.
+The following are a list of queries that we regularly encounter. Based on this information we should validate the data model we are using.
 
-API
-1) Get Object
-2) Get result from a sha 
-3) Get results from a sha and service_name
-3) Get Submissions for an object
+# API
+1) Result
+    - via sha
+    - via sha and service name 
+2) Submission
+    - via objectname
+    - via time
+3) Object
+    - via unique identifier (sha256, string)
+4) Config
 
-ML
+
+## Proposed API scheme
+### GET
+Get one item back from the server
+* v2/object:sha256
+* v2/raw_data:sha256
+* v2/result
+* v2/submission
+* v2/config
+
+* v2/search/objects
+* v2/search/results
+* v2/search/submissions
+
+### PATCH
+* v2/object:sha256
+
+### POST
+* v2/object
+* v2/raw_data
+* v2/result
+* v2/submissions
+* v2/config
+
+### DELETE
+* v2/object:sha256
+* v2/raw_data
+* v2/result
+* v2/submission
+
+# ML
 1) Get all results from a service_name
 2) Get all objects from a mime type
