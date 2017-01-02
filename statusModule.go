@@ -23,6 +23,7 @@ func initStatusModule(httpBinding string, warning, info, debug *log.Logger) {
 
 	httprouter := httprouter.New()
 	httprouter.GET("/status/get_machines", router.HttpGetMachineUuids)
+	httprouter.GET("/status/get_netinfo/:machine_uuid", router.HttpGetNetinfo)
 	httprouter.GET("/status/get_planners/:machine_uuid", router.HttpGetPlanners)
 	httprouter.GET("/status/get_sysinfo/:machine_uuid", router.HttpGetSysinfo)
 	go func() {

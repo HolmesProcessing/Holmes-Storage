@@ -55,6 +55,18 @@ func (this *Router) HttpGetPlanners(w http.ResponseWriter, r *http.Request, ps h
 	}
 }
 
+func (this *Router) HttpGetNetinfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if machine_uuid, err := msgtypes.UUIDFromString(ps.ByName("machine_uuid")); err == nil {
+		if si, exists := this.machines[*machine_uuid]; exists {
+			httpSendJson(w, si.NetworkStatus)
+		} else {
+			http.Error(w, "unknown machine_uuid: "+machine_uuid.ToString(), 404)
+		}
+	} else {
+		http.Error(w, "invalid machine_uuid: "+err.Error())
+	}
+}
+
 func (this *Router) HttpGetMachineUuids(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	sessions := server.GetSessions()
 
