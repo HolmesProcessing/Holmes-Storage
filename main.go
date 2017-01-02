@@ -143,7 +143,7 @@ func main() {
 
 	// start status server for UDP status api
 	info.Println("Listening for status messages on:", conf.Status)
-	initStatusModule(conf.Status)
+	go initStatusModule(conf.Status, warning, info, debug)
 
 	// start webserver for HTTP API
 	info.Println("Listening for http requests on:", conf.HTTP)
