@@ -63,7 +63,7 @@ func (this *Router) HttpGetNetinfo(w http.ResponseWriter, r *http.Request, ps ht
 			http.Error(w, "unknown machine_uuid: "+machine_uuid.ToString(), 404)
 		}
 	} else {
-		http.Error(w, "invalid machine_uuid: "+err.Error())
+		http.Error(w, "invalid machine_uuid: "+err.Error(), 400)
 	}
 }
 
