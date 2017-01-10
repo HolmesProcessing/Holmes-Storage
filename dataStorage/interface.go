@@ -63,43 +63,43 @@ type Storage interface {
 }
 
 type Object struct {
-	Id                 string    `json:"id"`
-	Type               string    `json:"type"`
-	CreatedDateTime    time.Time `json:"created_date_time"`
-	Submissions        []string  `json:"submissions"`
-	Source             []string  `json:"source"`
+	Id              string    `json:"id"`
+	Type            string    `json:"type"`
+	CreatedDateTime time.Time `json:"created_date_time"`
+	Submissions     []string  `json:"submissions"`
+	Source          []string  `json:"source"`
 
-	MD5                string    `json:"md5"`
-	SHA1               string    `json:"sha1"`
-	SHA256             string    `json:"sha256"`
+	MD5    string `json:"md5"`
+	SHA1   string `json:"sha1"`
+	SHA256 string `json:"sha256"`
 
-	FileMime           string    `json:"file_mime"`
-	FileName           []string  `json:"file_name"`
+	FileMime string   `json:"file_mime"`
+	FileName []string `json:"file_name"`
 
-	DomainFQDN         string    `json:"domain_fqdn"`
-	DomainTLD          string    `json:"domain_tld"`
-	DomainSubDomain    string    `json:"domain_sub_domain"`
+	DomainFQDN      string `json:"domain_fqdn"`
+	DomainTLD       string `json:"domain_tld"`
+	DomainSubDomain string `json:"domain_sub_domain"`
 
-	IPAddress          string    `json:"ip_address"`
-	IPv6               bool      `json:"ip_v6"`
+	IPAddress string `json:"ip_address"`
+	IPv6      bool   `json:"ip_v6"`
 
-	EmailAddress       string    `json:"email_address"`
-	EmailLocalPart     string    `json:"email_local_part"`
-	EmailDomainPart    string    `json:"email_domain_part"`
-	EmailSubAddressing string    `json:"email_address"`
+	EmailAddress       string `json:"email_address"`
+	EmailLocalPart     string `json:"email_local_part"`
+	EmailDomainPart    string `json:"email_domain_part"`
+	EmailSubAddressing string `json:"email_address"`
 
-	Generic_Identifier string    `json:"generic_identifier"`
+	Generic_Identifier string `json:"generic_identifier"`
 }
 
 type Submission struct {
-	Id          string    `json:"id"`
-	SHA256      string    `json:"sha256"`
-	UserId      string    `json:"user_id"`
-	Source      string    `json:"source"`
-	DateTime    time.Time `json:"date_time"`
-	ObjName     string    `json:"obj_name"`
-	Tags        []string  `json:"tags"`
-	Comment     string    `json:"comment"`
+	Id       string    `json:"id"`
+	SHA256   string    `json:"sha256"`
+	UserId   string    `json:"user_id"`
+	Source   string    `json:"source"`
+	DateTime time.Time `json:"date_time"`
+	ObjName  string    `json:"obj_name"`
+	Tags     []string  `json:"tags"`
+	Comment  string    `json:"comment"`
 }
 
 type Result struct {

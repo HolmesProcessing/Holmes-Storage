@@ -339,14 +339,27 @@ func (s *Cassandra) ObjectGet(sha256 string) (object *Object, err error) {
 	object = &Object{}
 
 	recoverLock.RLock()
-	err = s.DB.Query(`SELECT sha256, sha1, md5, mime, source, obj_name, submissions FROM objects WHERE sha256 = ? LIMIT 1`, sha256).Scan(
-		&object.SHA256,
-		&object.SHA1,
-		&object.MD5,
-		&object.MIME,
-		&object.Source,
-		&object.ObjName,
+	err = s.DB.Query(`SELECT id, type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name, domain_fqdn, domain_tld, domain_sub_domain, ip_address, ip_v6, email_address, email_local_part, email_domain_part, email_sub_addressing, generic_identifier WHERE sha256 = ? LIMIT 1`, sha256).Scan(
+		&object.Id,
+		&object.Type,
+		&object.CreatedDateTime,
 		&object.Submissions,
+		&object.Source,
+		&object.MD5,
+		&object.SHA1,
+		&object.SHA256,
+		&object.FileMime,
+		&object.FileName,
+		&object.DomainFQDN,
+		&object.DomainTLD,
+		&object.DomainSubDomain,
+		&object.IPAddress,
+		&object.IPv6,
+		&object.EmailAddress,
+		&object.EmailLocalPart,
+		&object.EmailDomainPart,
+		&object.EmailSubAddressing,
+		&object.Generic_Identifier,
 	)
 
 	if err == gocql.ErrTimeoutNoResponse {
@@ -368,11 +381,11 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	}
 
 	source := make([]string, l)
-	obj_name := make([]string, l)
+	file_name := make([]string, l)
 	submission_ids := make([]string, l)
 	for k, v := range submissions {
 		source[k] = v.Source
-		obj_name[k] = v.ObjName
+		file_name[k] = v.ObjName
 		submission_ids[k] = v.Id
 	}
 	inserted := false
@@ -380,25 +393,39 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	// more than one implies an update.
 	if l == 1 {
 		inserted = true
-		err = s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			obj.SHA256,
-			obj.SHA1,
+		err = s.DB.Query(`INSERT INTO objects (id, type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name, domain_fqdn, domain_tld, domain_sub_domain, ip_address, ip_v6, email_address, email_local_part, email_domain_part, email_sub_addressing, generic_identifier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			obj.Id,
+			obj.Type,
+			obj.CreatedDateTime,
+			obj.Submissions,
+			obj.Source,
 			obj.MD5,
-			obj.MIME,
-			source,
-			obj_name,
-			submission_ids,
+			obj.SHA1,
+			obj.SHA256,
+			obj.FileMime,
+			obj.FileName,
+			obj.DomainFQDN,
+			obj.DomainTLD,
+			obj.DomainSubDomain,
+			obj.IPAddress,
+			obj.IPv6,
+			obj.EmailAddress,
+			obj.EmailLocalPart,
+			obj.EmailDomainPart,
+			obj.EmailSubAddressing,
+			obj.Generic_Identifier,
 		).Exec()
 	} else {
-		err = s.DB.Query(`UPDATE objects SET source = ?,  obj_name = ?, submissions = ? WHERE sha256 = ?`,
+		err = s.DB.Query(`UPDATE objects SET source = ?,  file_name = ?, submissions = ? WHERE id = ?`,
 			source,
-			obj_name,
+			file_name,
 			submission_ids,
-			obj.SHA256,
+			obj.Id,
 		).Exec()
 	}
+
 	obj.Source = source
-	obj.ObjName = obj_name
+	obj.FileName = file_name
 	obj.Submissions = submission_ids
 
 	return inserted, err
