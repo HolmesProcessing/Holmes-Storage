@@ -87,7 +87,7 @@ func (s *Cassandra) Setup() error {
 		watchguard_log list<text>,
 		watchguard_version text,
 		comment text,
-	PRIMARY KEY ((id, service_name), finished_date_time)
+	PRIMARY KEY ((service_name), sha256, finished_date_time, id)
 	)
 	WITH CLUSTERING ORDER BY (finished_date_time DESC)
 	WITH compression = { 
@@ -125,7 +125,9 @@ func (s *Cassandra) Setup() error {
 		email_sub_addressing text,
 
 		generic_identifier text,
-	PRIMARY KEY ((id, type), first_submission_date_time)
+                generic_type text
+                generic_data_rel_address text,
+	PRIMARY KEY ((type, source), first_submission_date_time, id)
 	)
 	WITH CLUSTERING ORDER BY (first_submission_date_time DESC)
 	WITH compression = { 
@@ -145,7 +147,7 @@ func (s *Cassandra) Setup() error {
 		obj_name text,
 		tags set<text>,
 		comment text,
-	PRIMARY KEY ((id, source), date)
+	PRIMARY KEY ((sha256, source), date_time, id)
 	)
 	WITH CLUSTERING ORDER BY (date_time DESC)
 	WITH compression = { 
