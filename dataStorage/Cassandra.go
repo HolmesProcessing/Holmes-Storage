@@ -160,15 +160,6 @@ func (s *Cassandra) Setup() error {
 	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id(
 		AS SELECT *
 		FROM submissions
-		WHERE user_id IS NOT NULL AND id IS NOT NULL
-		PRIMARY KEY((user_id), id, sha256)
-		WITH CLUSTERING ORDER BY (id desc);`
-	if err := s.DB.Query(tableSubmissionsByUser).Exec(); err != nil {
-		return err
-	}	
-	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id(
-		AS SELECT *
-		FROM submissions
 		WHERE user_id IS NOT NULL AND id IS NOT NULL AND sha256 IS NOT NULL
 		PRIMARY KEY((user_id), id, sha256)
 		WITH CLUSTERING ORDER BY (id desc);`
