@@ -150,7 +150,7 @@ func (s *Cassandra) Setup() error {
 	PRIMARY KEY ((sha256), id)
 	)
 	WITH CLUSTERING ORDER BY (id DESC)
-	WITH compression = { 
+	AND compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
 	};`
