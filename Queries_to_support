@@ -1,30 +1,57 @@
 The following are a list of queries that we regularly encounter. Based on this information we should validate the data model we are using.
 
-# API
-1) Result
-    - via UUID
-2) Results
-    - via sha
-    - via service name 
-    - via time range
-3) Submission
-    - via UUID
-4) Submissions
-    - vis sha [should we make everything sha256..i.e. domain, ip, etc all get a sha256?]
-    - via time_time range
-    - via source
-    - via tag?
-    - via user_id
-5) Object
-    - vis sha [should we make everything sha256..i.e. domain, ip, etc all get a sha256?]
-6) Objects
-    - via type [should we breakthis down to include file_mime, tld, domain_part, ip_v6?]
-    - via time range
-    - via source
-    - via user
-7) Config
+# Scheme
+## Machine Learning
+We cannot assume we will capture all ML queries. However, we should provide a generic scheme that gets the bulk of what we currently need. 
+This will also provide a demonstration for people that wish to extend storage to support their own efforts. 
 
-## Proposed API scheme
+### Result
+I want all peinfo results. Maybe using only version 2, maybe only tagged with special prototype, and maybe withing the last 2 months. 
+Columns we care about:
+    - service_name
+    - service_version
+    - tags
+    - time range
+### Object
+Columns we care about:
+    - pretty much the same as web interface
+### Submission
+Columns we care about:
+    - pretty much the same as web interface
+
+## Web Interface
+This should be typical queries via a web interface. A standard API would also apply. Collecting large sets of data should be left to spark
+
+### Result
+Give me all the results for sha256. Maybe only with service_name, maybe with a specific version, and maybe only within a time range.
+Columns we care about:
+    - sha256
+    - service_name
+    - service_version
+    - time range
+### Object
+Give me the object that matches a sha256
+Give me all the objects that at a File Type. Maybe only PE32s, maybe only from a specific source, and maybe within a time range.
+Columns we care about:
+    - sha256
+    - type
+    - source
+    - time range
+    - tags
+### Submission
+Give me the submissions that matches a sha256
+Give me all the submissions that are under a source, maybe tagged with mediyes, maybe within a time range
+Give me all submissions under a user_id
+Columns we care about:
+    - sha256 
+    - source
+    - time range
+    - tags
+    - user_id
+    
+## Config
+
+# Proposed API scheme
 ### GET
 Get one item back from the server
 * v2/object/sha256
@@ -52,7 +79,3 @@ Get one item back from the server
 * v2/raw_data
 * v2/result
 * v2/submission
-
-# ML
-1) Get all results from a service_name
-2) Get all objects from a mime type
