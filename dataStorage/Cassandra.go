@@ -158,7 +158,17 @@ func (s *Cassandra) Setup() error {
 		return err
 	}
 	// TODO: Material views for submissions
-
+	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id(
+		AS SELECT *
+		FROM submissions
+		WHERE user_id IS NOT NULL AND id IS NOT NULL
+		PRIMARY KEY((user_id), id, sha256)
+		WITH CLUSTERING ORDER BY (id desc);`
+	if err := s.DB.Query(tableSubmissionsByUser).Exec(); err != nil {
+		return err
+	}	
+	
+	
 	tableConfig := `CREATE TABLE config(
 		path text PRIMARY KEY,
 		file_contents text
