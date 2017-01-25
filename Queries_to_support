@@ -31,7 +31,7 @@ Columns we care about:
     - time range
 ### Object
 Give me the object that matches a sha256
-Give me all the objects that are of Type. Maybe only PE32s, maybe only from a specific source, and maybe within a time range.
+Give me all the objects that are of Type. Maybe only by mime, and maybe within a time range.
 Columns we care about:
     - sha256
     - type
