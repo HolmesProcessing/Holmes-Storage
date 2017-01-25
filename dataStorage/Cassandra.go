@@ -99,10 +99,9 @@ func (s *Cassandra) Setup() error {
 	}
 
 	tableObjects := `CREATE TABLE objects(
-		id uuid,
 		type text,
 		creation_date_time timestamp,
-		submissions set<uuid>,
+		submissions set<timeuuid>,
 		source set<text>,
 
 		md5 text,
@@ -125,16 +124,28 @@ func (s *Cassandra) Setup() error {
 		email_sub_addressing text,
 
 		generic_identifier text,
-                generic_type text
+                generic_type text,
                 generic_data_rel_address text,
-	PRIMARY KEY ((type, source), first_submission_date_time, id)
+	PRIMARY KEY ((sha256), creation_date_time)
 	)
-	WITH CLUSTERING ORDER BY (first_submission_date_time DESC)
+	WITH CLUSTERING ORDER BY (creation_date_time DESC)
 	WITH compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
 	};`
 	if err := s.DB.Query(tableObjects).Exec(); err != nil {
+		return err
+	}
+	tableObjectsByTypeFile := `CREATE MATERIALIZED VIEW objects_by_type_file(
+		AS SELECT creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name
+		FROM objects
+		WHERE file_mime IS NOT NULL
+			creation_date_time IS NOT NULL
+			sha256 IS NOT NULL
+			AND type = 'file'
+		PRIMARY KEY((file_mime), creation_date_time, sha256)
+		WITH CLUSTERING ORDER BY (creation_date_time DESC);`
+	if err := s.DB.Query(tableObjectsByTypeFile).Exec(); err != nil {
 		return err
 	}
 
@@ -160,7 +171,9 @@ func (s *Cassandra) Setup() error {
 	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id(
 		AS SELECT *
 		FROM submissions
-		WHERE user_id IS NOT NULL AND id IS NOT NULL AND sha256 IS NOT NULL
+		WHERE user_id IS NOT NULL 
+			AND id IS NOT NULL 
+			AND sha256 IS NOT NULL
 		PRIMARY KEY((user_id), id, sha256)
 		WITH CLUSTERING ORDER BY (id desc);`
 	if err := s.DB.Query(tableSubmissionsByUser).Exec(); err != nil {
@@ -169,10 +182,12 @@ func (s *Cassandra) Setup() error {
 	tableSubmissionsBySource := `CREATE MATERIALIZED VIEW submissions_by_source(
 		AS SELECT *
 		FROM submissions
-		WHERE source IS NOT NULL AND id IS NOT NULL AND sha256 IS NOT NULL
+		WHERE source IS NOT NULL 
+			AND id IS NOT NULL 
+			AND sha256 IS NOT NULL
 		PRIMARY KEY((source), id, sha256)
 		WITH CLUSTERING ORDER BY (id desc);`
-	if err := s.DB.Query(tableSubmissionsByUser).Exec(); err != nil {
+	if err := s.DB.Query(tableSubmissionsBySource).Exec(); err != nil {
 		return err
 	}	
 	
