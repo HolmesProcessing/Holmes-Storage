@@ -139,7 +139,7 @@ func (s *Cassandra) Setup() error {
 	}
 
 	tableSubmissions := `CREATE TABLE submissions(
-		id uuid,
+		id timeuuid,
 		sha256 text,
 		user_id text,
 		source text,
@@ -147,18 +147,17 @@ func (s *Cassandra) Setup() error {
 		obj_name text,
 		tags set<text>,
 		comment text,
-	PRIMARY KEY ((sha256, source), date_time, id)
+	PRIMARY KEY ((sha256), id)
 	)
-	WITH CLUSTERING ORDER BY (date_time DESC)
+	WITH CLUSTERING ORDER BY (id DESC)
 	WITH compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
-	}
-	WITH 
-	;`
+	};`
 	if err := s.DB.Query(tableSubmissions).Exec(); err != nil {
 		return err
 	}
+	// TODO: Material views for submissions
 
 	tableConfig := `CREATE TABLE config(
 		path text PRIMARY KEY,
