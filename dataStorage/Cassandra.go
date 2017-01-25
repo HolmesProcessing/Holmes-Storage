@@ -68,7 +68,7 @@ func (s *Cassandra) Setup() error {
 
 	// create tables
 	tableResults := `CREATE TABLE results(
-		id uuid,
+		id timeuuid,
 		sha256 text,
 		schema_version text,
 		user_id text,
@@ -81,15 +81,14 @@ func (s *Cassandra) Setup() error {
 		object_type text,
 		results text,
 		tags set<text>,
-		started_date_time timestamp,
-		finished_date_time timestamp,
+		execution_time time,
 		watchguard_status text,
 		watchguard_log list<text>,
 		watchguard_version text,
 		comment text,
-	PRIMARY KEY ((service_name), sha256, finished_date_time, id)
+	PRIMARY KEY ((service_name, objtype_type), service_version, id)
 	)
-	WITH CLUSTERING ORDER BY (finished_date_time DESC)
+	WITH CLUSTERING ORDER BY (id DESC)
 	WITH compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
@@ -97,7 +96,19 @@ func (s *Cassandra) Setup() error {
 	if err := s.DB.Query(tableResults).Exec(); err != nil {
 		return err
 	}
-
+	tableResultsByService := `CREATE MATERIALIZED VIEW results_by_sha256(
+		AS SELECT *
+		FROM results
+		WHERE service_name IS NOT NULL
+			sha256 IS NOT NULL
+			id IS NOT NULL
+		PRIMARY KEY((sha256), id, service_name, service_version)
+		WITH CLUSTERING ORDER BY (id DESC);`
+	if err := s.DB.Query(tableObjectsByTypeFile).Exec(); err != nil {
+		return err
+	}
+	
+	
 	tableObjects := `CREATE TABLE objects(
 		type text,
 		creation_date_time timestamp,
