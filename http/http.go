@@ -211,9 +211,9 @@ func sampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		SHA256:      sha256String,
 		SHA1:        sha1String,
 		MD5:         md5String,
-		MIME:        mimeType,
+		FileMime:    mimeType,
 		Source:      []string{""},
-		ObjName:     []string{""},
+		FileName:    []string{""},
 		Submissions: []string{""},
 	}
 
@@ -224,13 +224,13 @@ func sampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 
 	submission := &dataStorage.Submission{
-		SHA256:  sha256String,
-		UserId:  userId,
-		Source:  r.FormValue("source"),
-		Date:    date,
-		ObjName: r.FormValue("name"),
-		Tags:    r.Form["tags"],
-		Comment: r.FormValue("comment"),
+		SHA256:   sha256String,
+		UserId:   userId,
+		Source:   r.FormValue("source"),
+		DateTime: date,
+		ObjName:  r.FormValue("name"),
+		Tags:     r.Form["tags"],
+		Comment:  r.FormValue("comment"),
 	}
 
 	sample := &objectStorage.Sample{

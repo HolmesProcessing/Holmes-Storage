@@ -67,145 +67,145 @@ func (s *Cassandra) Setup() error {
 	}
 
 	// create tables
+	// spaces needed, !NO TABS!
 	tableResults := `CREATE TABLE results(
-		id timeuuid,
-		sha256 text,
-		schema_version text,
-		user_id text,
-		source_id set<text>,
-		source_tag set<text>,
-		service_name text,
-		service_version text,
-		service_config text,
-		object_category set<text>,
-		object_type text,
-		results text,
-		tags set<text>,
-		execution_time time,
-		watchguard_status text,
-		watchguard_log list<text>,
-		watchguard_version text,
-		comment text,
-	PRIMARY KEY ((service_name, objtype_type), service_version, id)
-	)
-	WITH CLUSTERING ORDER BY (id DESC)
-	WITH compression = { 
-		'enabled': 'true', 
-		'class' : 'LZ4Compressor' 
-	};`
+        id timeuuid,
+        sha256 text,
+        schema_version text,
+        user_id text,
+        source_id set<text>,
+        source_tag set<text>,
+        service_name text,
+        service_version text,
+        service_config text,
+        object_category set<text>,
+        object_type text,
+        results text,
+        tags set<text>,
+        execution_time time,
+        watchguard_status text,
+        watchguard_log list<text>,
+        watchguard_version text,
+        comment text,
+    PRIMARY KEY ((service_name, object_type), id, service_version))
+    WITH CLUSTERING ORDER BY (id DESC)
+    AND compression = { 
+        'enabled': 'true', 
+        'class' : 'LZ4Compressor' 
+    };`
 	if err := s.DB.Query(tableResults).Exec(); err != nil {
 		return err
 	}
-	tableResultsByService := `CREATE MATERIALIZED VIEW results_by_sha256(
-		AS SELECT *
-		FROM results
-		WHERE service_name IS NOT NULL
-			sha256 IS NOT NULL
-			id IS NOT NULL
-		PRIMARY KEY((sha256), id, service_name, service_version)
-		WITH CLUSTERING ORDER BY (id DESC);`
-	if err := s.DB.Query(tableObjectsByTypeFile).Exec(); err != nil {
+
+	tableResultsBySHA256 := `CREATE MATERIALIZED VIEW results_by_sha256 AS
+        SELECT * FROM results
+        WHERE sha256 IS NOT NULL 
+        AND id IS NOT NULL 
+        AND service_name IS NOT NULL 
+        AND service_version IS NOT NULL 
+        AND object_type IS NOT NULL
+        PRIMARY KEY((sha256), id, service_name, service_version, object_type)
+        WITH CLUSTERING ORDER BY (id DESC);`
+	if err := s.DB.Query(tableResultsBySHA256).Exec(); err != nil {
 		return err
 	}
-	
-	
+
 	tableObjects := `CREATE TABLE objects(
-		type text,
-		creation_date_time timestamp,
-		submissions set<timeuuid>,
-		source set<text>,
+        type text,
+        creation_date_time timestamp,
+        submissions set<timeuuid>,
+        source set<text>,
 
-		md5 text,
-		sha1 text,
-		sha256 text,
+        md5 text,
+        sha1 text,
+        sha256 text,
 
-		file_mime text,
-		file_name set<text>,
+        file_mime text,
+        file_name set<text>,
 
-		domain_fqdn text,
-		domain_tld text,
-		domain_sub_domain text,
+        domain_fqdn text,
+        domain_tld text,
+        domain_sub_domain text,
 
-		ip_address inet,
-		ip_v6 boolean,
+        ip_address inet,
+        ip_v6 boolean,
 
-		email_address text,
-		email_local_part text,
-		email_domain_part text,
-		email_sub_addressing text,
+        email_address text,
+        email_local_part text,
+        email_domain_part text,
+        email_sub_addressing text,
 
-		generic_identifier text,
-                generic_type text,
-                generic_data_rel_address text,
-	PRIMARY KEY ((sha256), creation_date_time)
-	)
-	WITH CLUSTERING ORDER BY (creation_date_time DESC)
-	WITH compression = { 
-		'enabled': 'true', 
-		'class' : 'LZ4Compressor' 
-	};`
+        generic_identifier text,
+        generic_type text,
+        generic_data_rel_address text,
+    PRIMARY KEY ((sha256), creation_date_time, type))
+    WITH CLUSTERING ORDER BY (creation_date_time DESC)
+    AND compression = { 
+        'enabled': 'true', 
+        'class' : 'LZ4Compressor' 
+    };`
 	if err := s.DB.Query(tableObjects).Exec(); err != nil {
 		return err
 	}
-	tableObjectsByTypeFile := `CREATE MATERIALIZED VIEW objects_by_type_file(
-		AS SELECT creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name
-		FROM objects
-		WHERE file_mime IS NOT NULL
-			creation_date_time IS NOT NULL
-			sha256 IS NOT NULL
-			AND type = 'file'
-		PRIMARY KEY((file_mime), creation_date_time, sha256)
-		WITH CLUSTERING ORDER BY (creation_date_time DESC);`
+
+	tableObjectsByTypeFile := `CREATE MATERIALIZED VIEW objects_by_type_file AS
+        SELECT creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name
+        FROM objects
+        WHERE file_mime IS NOT NULL
+        AND creation_date_time IS NOT NULL
+        AND sha256 IS NOT NULL
+        AND type = 'file'
+        PRIMARY KEY((file_mime), creation_date_time, sha256, type)
+        WITH CLUSTERING ORDER BY (creation_date_time DESC);`
 	if err := s.DB.Query(tableObjectsByTypeFile).Exec(); err != nil {
 		return err
 	}
 
 	tableSubmissions := `CREATE TABLE submissions(
-		id timeuuid,
-		sha256 text,
-		user_id text,
-		source text,
-		date_time timestamp,
-		obj_name text,
-		tags set<text>,
-		comment text,
-	PRIMARY KEY ((sha256), id)
-	)
-	WITH CLUSTERING ORDER BY (id DESC)
-	AND compression = { 
-		'enabled': 'true', 
-		'class' : 'LZ4Compressor' 
-	};`
+        id timeuuid,
+        sha256 text,
+        user_id text,
+        source text,
+        date_time timestamp,
+        obj_name text,
+        tags set<text>,
+        comment text,
+    PRIMARY KEY ((sha256), id))
+    WITH CLUSTERING ORDER BY (id DESC)
+    AND compression = { 
+        'enabled': 'true', 
+        'class' : 'LZ4Compressor'
+    };`
 	if err := s.DB.Query(tableSubmissions).Exec(); err != nil {
 		return err
 	}
-	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id(
-		AS SELECT *
-		FROM submissions
-		WHERE user_id IS NOT NULL 
-			AND id IS NOT NULL 
-			AND sha256 IS NOT NULL
-		PRIMARY KEY((user_id), id, sha256)
-		WITH CLUSTERING ORDER BY (id desc);`
+	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id
+        AS SELECT *
+        FROM submissions
+        WHERE user_id IS NOT NULL 
+        AND id IS NOT NULL 
+        AND sha256 IS NOT NULL
+        PRIMARY KEY((user_id), id, sha256)
+        WITH CLUSTERING ORDER BY (id desc);`
 	if err := s.DB.Query(tableSubmissionsByUser).Exec(); err != nil {
 		return err
-	}	
-	tableSubmissionsBySource := `CREATE MATERIALIZED VIEW submissions_by_source(
-		AS SELECT *
-		FROM submissions
-		WHERE source IS NOT NULL 
-			AND id IS NOT NULL 
-			AND sha256 IS NOT NULL
-		PRIMARY KEY((source), id, sha256)
-		WITH CLUSTERING ORDER BY (id desc);`
+	}
+	tableSubmissionsBySource := `CREATE MATERIALIZED VIEW submissions_by_source
+        AS SELECT *
+        FROM submissions
+        WHERE source IS NOT NULL 
+        AND id IS NOT NULL 
+        AND sha256 IS NOT NULL
+        PRIMARY KEY((source), id, sha256)
+        WITH CLUSTERING ORDER BY (id desc);`
 	if err := s.DB.Query(tableSubmissionsBySource).Exec(); err != nil {
 		return err
-	}	
-	
+	}
+
 	tableConfig := `CREATE TABLE config(
-		path text PRIMARY KEY,
-		file_contents text
-	);`
+        path text PRIMARY KEY,
+        file_contents text
+    );`
 	if err := s.DB.Query(tableConfig).Exec(); err != nil {
 		return err
 	}
@@ -229,33 +229,6 @@ func (s *Cassandra) Setup() error {
 		return err
 	}
 
-	tableResultsIndex = `CREATE CUSTOM INDEX results_finished_date_time_idx 
-		ON results (finished_date_time) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableResultsIndex = `CREATE CUSTOM INDEX results_service_name_idx 
-		ON results (service_name) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableResultsIndex = `CREATE CUSTOM INDEX results_sha256_idx 
-		ON results (sha256) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableResultsIndex = `CREATE CUSTOM INDEX results_started_date_time_idx 
-		ON results (started_date_time) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
-		return err
-	}
 	//////////
 	// WARNING: Uncomment only if needed. This can increase physical storage costs by ~40% with 1 million samples and 4 Services.
 	//	tableResultsIndex := `CREATE CUSTOM INDEX results_results_idx
@@ -283,21 +256,6 @@ func (s *Cassandra) Setup() error {
 		return err
 	}
 
-	tableObjectsIndex = `CREATE CUSTOM INDEX objects_mime_idx 
-		ON objects (mime) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'analyzed' : 'true', 
-			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-			'tokenization_enable_stemming' : 'false', 
-			'tokenization_locale' : 'en', 
-			'tokenization_normalize_lowercase' : 'true', 
-			'tokenization_skip_stop_words' : 'true'
-		};`
-	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
-		return err
-	}
-
 	// Add SASI indexes for submissions
 	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx 
 		ON submissions (comment) 
@@ -310,44 +268,6 @@ func (s *Cassandra) Setup() error {
 			'tokenization_normalize_lowercase' : 'true', 
 			'tokenization_skip_stop_words' : 'true'
 		};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_date_idx 
-		ON submissions (date) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_obj_name_idx 
-		ON submissions (obj_name) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'mode' : 'CONTAINS'
-		};`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_sha256_idx 
-		ON submissions (sha256) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_source_idx 
-		ON submissions (source) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
-	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
-		return err
-	}
-
-	tableSubmissionsIndex = `CREATE CUSTOM INDEX submissions_user_id_idx 
-		ON submissions (user_id) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
@@ -383,14 +303,28 @@ func (s *Cassandra) ObjectGet(sha256 string) (object *Object, err error) {
 	object = &Object{}
 
 	recoverLock.RLock()
-	err = s.DB.Query(`SELECT sha256, sha1, md5, mime, source, obj_name, submissions FROM objects WHERE sha256 = ? LIMIT 1`, sha256).Scan(
-		&object.SHA256,
-		&object.SHA1,
-		&object.MD5,
-		&object.MIME,
-		&object.Source,
-		&object.ObjName,
+	err = s.DB.Query("SELECT `type`, `creation_date_time`, `submissions`, `source`, `md5`, `sha1`, `sha256`, `file_mime`, `file_name`, `domain_fqdn`, `domain_tld`, `domain_sub_domain`, `ip_address`, `ip_v6`, `email_address`, `email_local_part`, `email_domain_part`, `email_sub_addressing`, `generic_identifier`, `generic_type`, `generic_data_rel_address` FROM objects WHERE sha256 = ? LIMIT 1", sha256).Scan(
+		&object.Type,
+		&object.CreationDateTime,
 		&object.Submissions,
+		&object.Source,
+		&object.MD5,
+		&object.SHA1,
+		&object.SHA256,
+		&object.FileMime,
+		&object.FileName,
+		&object.DomainFQDN,
+		&object.DomainTLD,
+		&object.DomainSubDomain,
+		&object.IPAddress,
+		&object.IPv6,
+		&object.EmailAddress,
+		&object.EmailLocalPart,
+		&object.EmailDomainPart,
+		&object.EmailSubAddressing,
+		&object.GenericIdentifier,
+		&object.GenericType,
+		&object.GenericDataRelAddress,
 	)
 
 	if err == gocql.ErrTimeoutNoResponse {
@@ -412,11 +346,11 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	}
 
 	source := make([]string, l)
-	obj_name := make([]string, l)
+	file_name := make([]string, l)
 	submission_ids := make([]string, l)
 	for k, v := range submissions {
 		source[k] = v.Source
-		obj_name[k] = v.ObjName
+		file_name[k] = v.ObjName
 		submission_ids[k] = v.Id
 	}
 	inserted := false
@@ -424,25 +358,40 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	// more than one implies an update.
 	if l == 1 {
 		inserted = true
-		err = s.DB.Query(`INSERT INTO objects (sha256, sha1, md5, mime, source, obj_name, submissions) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			obj.SHA256,
-			obj.SHA1,
+		err = s.DB.Query("INSERT INTO objects (`type`, `creation_date_time`, `submissions`, `source`, `md5`, `sha1`, `sha256`, `file_mime`, `file_name`, `domain_fqdn`, `domain_tld`, `domain_sub_domain`, `ip_address`, `ip_v6`, `email_address`, `email_local_part`, `email_domain_part`, `email_sub_addressing`, `generic_identifier`, `generic_type`, `generic_data_rel_address`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			obj.Type,
+			obj.CreationDateTime,
+			obj.Submissions,
+			obj.Source,
 			obj.MD5,
-			obj.MIME,
-			source,
-			obj_name,
-			submission_ids,
+			obj.SHA1,
+			obj.SHA256,
+			obj.FileMime,
+			obj.FileName,
+			obj.DomainFQDN,
+			obj.DomainTLD,
+			obj.DomainSubDomain,
+			obj.IPAddress,
+			obj.IPv6,
+			obj.EmailAddress,
+			obj.EmailLocalPart,
+			obj.EmailDomainPart,
+			obj.EmailSubAddressing,
+			obj.GenericIdentifier,
+			obj.GenericType,
+			obj.GenericDataRelAddress,
 		).Exec()
 	} else {
-		err = s.DB.Query(`UPDATE objects SET source = ?,  obj_name = ?, submissions = ? WHERE sha256 = ?`,
+		err = s.DB.Query(`UPDATE objects SET source = ?,  file_name = ?, submissions = ? WHERE sha256 = ?`,
 			source,
-			obj_name,
+			file_name,
 			submission_ids,
 			obj.SHA256,
 		).Exec()
 	}
+
 	obj.Source = source
-	obj.ObjName = obj_name
+	obj.FileName = file_name
 	obj.Submissions = submission_ids
 
 	return inserted, err
@@ -460,8 +409,8 @@ func (s *Cassandra) ObjectUpdate(sha256 string) error {
 	return errors.New("Not implemented")
 }
 
-func (s *Cassandra) updateSubmissions(id string) error {
-	submissions, err := s.SubmissionsGetByObject(id)
+func (s *Cassandra) updateSubmissions(sha256 string) error {
+	submissions, err := s.SubmissionsGetByObject(sha256)
 	if err != nil {
 		return err
 	}
@@ -485,7 +434,7 @@ func (s *Cassandra) updateSubmissions(id string) error {
 		source,
 		obj_name,
 		submission_ids,
-		id,
+		sha256,
 	).Exec()
 	return err
 }
@@ -498,7 +447,7 @@ func (s *Cassandra) ResultGet(id string) (*Result, error) {
 		return result, err
 	}
 
-	err = s.DB.Query(`SELECT * FROM results WHERE id = ? LIMIT 1`, uuid).Scan(
+	err = s.DB.Query("SELECT `id`, `sha256`, `schema_version`, `user_id`, `source_id`, `source_tag`, `service_name`, `service_version`, `service_config`, `object_category`, `object_type`, `results`, `tags`, `execution_time`, `watchguard_status`, `watchguard_log`, `watchguard_version`, `comment` FROM results WHERE id = ? LIMIT 1", uuid).Scan(
 		&result.Id,
 		&result.SHA256,
 		&result.SchemaVersion,
@@ -512,23 +461,20 @@ func (s *Cassandra) ResultGet(id string) (*Result, error) {
 		&result.ObjectType,
 		&result.Results,
 		&result.Tags,
-		&result.StartedDateTime,
-		&result.FinishedDateTime,
+		&result.ExecutionTime,
 		&result.WatchguardStatus,
 		&result.WatchguardLog,
 		&result.WatchguardVersion,
+		&result.Comment,
 	)
 
 	return result, err
 }
 
 func (s *Cassandra) ResultStore(res *Result) error {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return err
-	}
+	id := gocql.TimeUUID()
 
-	err = s.DB.Query(`INSERT INTO results (id, sha256, schema_version, user_id, source_id, source_tag, service_name, service_version, service_config, object_category, object_type, results, tags, started_date_time, finished_date_time, watchguard_status, watchguard_log, watchguard_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	err := s.DB.Query("INSERT INTO results (`id`, `sha256`, `schema_version`, `user_id`, `source_id`, `source_tag`, `service_name`, `service_version`, `service_config`, `object_category`, `object_type`, `results`, `tags`, `execution_time`, `watchguard_status`, `watchguard_log`, `watchguard_version`, `comment`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		id,
 		res.SHA256,
 		res.SchemaVersion,
@@ -542,11 +488,11 @@ func (s *Cassandra) ResultStore(res *Result) error {
 		res.ObjectType,
 		res.Results,
 		res.Tags,
-		res.StartedDateTime,
-		res.FinishedDateTime,
+		res.ExecutionTime,
 		res.WatchguardStatus,
 		res.WatchguardLog,
 		res.WatchguardVersion,
+		res.Comment,
 	).Exec()
 
 	return err
@@ -578,12 +524,12 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 	}
 
 	recoverLock.RLock()
-	err = s.DB.Query(`SELECT id, sha256, user_id, source, date, obj_name, tags, comment FROM submissions WHERE id = ? LIMIT 1`, uuid).Scan(
+	err = s.DB.Query("SELECT `id`, `sha256`, `user_id`, `source`, `date_time`, `obj_name`, `tags`, `comment` FROM submissions WHERE id = ? LIMIT 1", uuid).Scan(
 		&submission.Id,
 		&submission.SHA256,
 		&submission.UserId,
 		&submission.Source,
-		&submission.Date,
+		&submission.DateTime,
 		&submission.ObjName,
 		&submission.Tags,
 		&submission.Comment,
@@ -604,12 +550,12 @@ func (s *Cassandra) SubmissionStore(sub *Submission) error {
 
 	sub.Id = id.String()
 
-	err = s.DB.Query(`INSERT INTO submissions (id, sha256, user_id, source, date, obj_name, tags, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+	err = s.DB.Query("INSERT INTO submissions (`id`, `sha256`, `user_id`, `source`, `date_time`, `obj_name`, `tags`, `comment`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		id,
 		sub.SHA256,
 		sub.UserId,
 		sub.Source,
-		sub.Date,
+		sub.DateTime,
 		sub.ObjName,
 		sub.Tags,
 		sub.Comment,
@@ -637,13 +583,13 @@ func (s *Cassandra) SubmissionsGetByObject(sha256 string) ([]*Submission, error)
 	submissions := []*Submission{}
 	submission := &Submission{}
 
-	iter := s.DB.Query(`SELECT id, sha256, user_id, source, date, obj_name, tags, comment FROM submissions WHERE sha256 = ?`, sha256).Iter()
+	iter := s.DB.Query("SELECT `id`, `sha256`, `user_id`, `source`, `date_time`, `obj_name`, `tags`, `comment` FROM submissions WHERE sha256 = ?", sha256).Iter()
 	for iter.Scan(
 		&submission.Id,
 		&submission.SHA256,
 		&submission.UserId,
 		&submission.Source,
-		&submission.Date,
+		&submission.DateTime,
 		&submission.ObjName,
 		&submission.Tags,
 		&submission.Comment,

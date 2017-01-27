@@ -110,6 +110,8 @@ func handleMessage(c *context.Ctx, msg amqp.Delivery) {
 
 	// TODO: Totem needs to send hashes lowercase
 
+	// TODO: Totem needs to send execution time
+
 	result := &dataStorage.Result{
 		Id:                "",                        //will be filled by the storage engine
 		SHA256:            strings.ToLower(m.SHA256), //totem currently send the hash all upper case
@@ -124,11 +126,11 @@ func handleMessage(c *context.Ctx, msg amqp.Delivery) {
 		ObjectType:        "sample",
 		Results:           m.Data,
 		Tags:              m.Tags,
-		StartedDateTime:   time.Now(),
-		FinishedDateTime:  time.Now(),
+		ExecutionTime:     time.Now(),
 		WatchguardStatus:  "NotImplemented",
 		WatchguardLog:     []string{"NotImplemented"},
 		WatchguardVersion: "NotImplemented",
+		Comment:           "",
 	}
 
 	err = c.Data.ResultStore(result)
