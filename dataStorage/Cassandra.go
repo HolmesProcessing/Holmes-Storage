@@ -515,6 +515,7 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 			submission, err = s.SubmissionGet(id)
 		}
 	}()
+	recoverLock.RLock()
 
 	submission = &Submission{}
 
@@ -523,7 +524,6 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 		return submission, err
 	}
 
-	recoverLock.RLock()
 	err = s.DB.Query("SELECT id, sha256, user_id, source, date_time, obj_name, tags, comment FROM submissions WHERE id = ? LIMIT 1", uuid).Scan(
 		&submission.Id,
 		&submission.SHA256,
