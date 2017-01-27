@@ -303,7 +303,7 @@ func (s *Cassandra) ObjectGet(sha256 string) (object *Object, err error) {
 	object = &Object{}
 
 	recoverLock.RLock()
-	err = s.DB.Query("SELECT `type`, `creation_date_time`, `submissions`, `source`, `md5`, `sha1`, `sha256`, `file_mime`, `file_name`, `domain_fqdn`, `domain_tld`, `domain_sub_domain`, `ip_address`, `ip_v6`, `email_address`, `email_local_part`, `email_domain_part`, `email_sub_addressing`, `generic_identifier`, `generic_type`, `generic_data_rel_address` FROM objects WHERE sha256 = ? LIMIT 1", sha256).Scan(
+	err = s.DB.Query("SELECT type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name, domain_fqdn, domain_tld, domain_sub_domain, ip_address, ip_v6, email_address, email_local_part, email_domain_part, email_sub_addressing, generic_identifier, generic_type, generic_data_rel_address FROM objects WHERE sha256 = ? LIMIT 1", sha256).Scan(
 		&object.Type,
 		&object.CreationDateTime,
 		&object.Submissions,
@@ -358,7 +358,7 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	// more than one implies an update.
 	if l == 1 {
 		inserted = true
-		err = s.DB.Query("INSERT INTO objects (`type`, `creation_date_time`, `submissions`, `source`, `md5`, `sha1`, `sha256`, `file_mime`, `file_name`, `domain_fqdn`, `domain_tld`, `domain_sub_domain`, `ip_address`, `ip_v6`, `email_address`, `email_local_part`, `email_domain_part`, `email_sub_addressing`, `generic_identifier`, `generic_type`, `generic_data_rel_address`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name, domain_fqdn, domain_tld, domain_sub_domain, ip_address, ip_v6, email_address, email_local_part, email_domain_part, email_sub_addressing, generic_identifier, generic_type, generic_data_rel_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			obj.Type,
 			obj.CreationDateTime,
 			obj.Submissions,
@@ -447,7 +447,7 @@ func (s *Cassandra) ResultGet(id string) (*Result, error) {
 		return result, err
 	}
 
-	err = s.DB.Query("SELECT `id`, `sha256`, `schema_version`, `user_id`, `source_id`, `source_tag`, `service_name`, `service_version`, `service_config`, `object_category`, `object_type`, `results`, `tags`, `execution_time`, `watchguard_status`, `watchguard_log`, `watchguard_version`, `comment` FROM results WHERE id = ? LIMIT 1", uuid).Scan(
+	err = s.DB.Query("SELECT id, sha256, schema_version, user_id, source_id, source_tag, service_name, service_version, service_config, object_category, object_type, results, tags, execution_time, watchguard_status, watchguard_log, watchguard_version, comment FROM results WHERE id = ? LIMIT 1", uuid).Scan(
 		&result.Id,
 		&result.SHA256,
 		&result.SchemaVersion,
@@ -474,7 +474,7 @@ func (s *Cassandra) ResultGet(id string) (*Result, error) {
 func (s *Cassandra) ResultStore(res *Result) error {
 	id := gocql.TimeUUID()
 
-	err := s.DB.Query("INSERT INTO results (`id`, `sha256`, `schema_version`, `user_id`, `source_id`, `source_tag`, `service_name`, `service_version`, `service_config`, `object_category`, `object_type`, `results`, `tags`, `execution_time`, `watchguard_status`, `watchguard_log`, `watchguard_version`, `comment`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	err := s.DB.Query("INSERT INTO results (id, sha256, schema_version, user_id, source_id, source_tag, service_name, service_version, service_config, object_category, object_type, results, tags, execution_time, watchguard_status, watchguard_log, watchguard_version, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		id,
 		res.SHA256,
 		res.SchemaVersion,
@@ -524,7 +524,7 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 	}
 
 	recoverLock.RLock()
-	err = s.DB.Query("SELECT `id`, `sha256`, `user_id`, `source`, `date_time`, `obj_name`, `tags`, `comment` FROM submissions WHERE id = ? LIMIT 1", uuid).Scan(
+	err = s.DB.Query("SELECT id, sha256, user_id, source, date_time, obj_name, tags, comment FROM submissions WHERE id = ? LIMIT 1", uuid).Scan(
 		&submission.Id,
 		&submission.SHA256,
 		&submission.UserId,
@@ -550,7 +550,7 @@ func (s *Cassandra) SubmissionStore(sub *Submission) error {
 
 	sub.Id = id.String()
 
-	err = s.DB.Query("INSERT INTO submissions (`id`, `sha256`, `user_id`, `source`, `date_time`, `obj_name`, `tags`, `comment`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	err = s.DB.Query("INSERT INTO submissions (id, sha256, user_id, source, date_time, obj_name, tags, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		id,
 		sub.SHA256,
 		sub.UserId,
@@ -583,7 +583,7 @@ func (s *Cassandra) SubmissionsGetByObject(sha256 string) ([]*Submission, error)
 	submissions := []*Submission{}
 	submission := &Submission{}
 
-	iter := s.DB.Query("SELECT `id`, `sha256`, `user_id`, `source`, `date_time`, `obj_name`, `tags`, `comment` FROM submissions WHERE sha256 = ?", sha256).Iter()
+	iter := s.DB.Query("SELECT id, sha256, user_id, source, date_time, obj_name, tags, comment FROM submissions WHERE sha256 = ?", sha256).Iter()
 	for iter.Scan(
 		&submission.Id,
 		&submission.SHA256,
