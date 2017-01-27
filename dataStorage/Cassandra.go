@@ -68,7 +68,7 @@ func (s *Cassandra) Setup() error {
 
 	// create tables
 	tableResults := `CREATE TABLE results(
-		id uuid,
+		id timeuuid,
 		sha256 text,
 		schema_version text,
 		user_id text,
@@ -81,15 +81,14 @@ func (s *Cassandra) Setup() error {
 		object_type text,
 		results text,
 		tags set<text>,
-		started_date_time timestamp,
-		finished_date_time timestamp,
+		execution_time time,
 		watchguard_status text,
 		watchguard_log list<text>,
 		watchguard_version text,
 		comment text,
-	PRIMARY KEY ((service_name), sha256, finished_date_time, id)
+	PRIMARY KEY ((service_name, objtype_type), service_version, id)
 	)
-	WITH CLUSTERING ORDER BY (finished_date_time DESC)
+	WITH CLUSTERING ORDER BY (id DESC)
 	WITH compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
@@ -97,12 +96,23 @@ func (s *Cassandra) Setup() error {
 	if err := s.DB.Query(tableResults).Exec(); err != nil {
 		return err
 	}
-
+	tableResultsByService := `CREATE MATERIALIZED VIEW results_by_sha256(
+		AS SELECT *
+		FROM results
+		WHERE service_name IS NOT NULL
+			sha256 IS NOT NULL
+			id IS NOT NULL
+		PRIMARY KEY((sha256), id, service_name, service_version)
+		WITH CLUSTERING ORDER BY (id DESC);`
+	if err := s.DB.Query(tableObjectsByTypeFile).Exec(); err != nil {
+		return err
+	}
+	
+	
 	tableObjects := `CREATE TABLE objects(
-		id uuid,
 		type text,
 		creation_date_time timestamp,
-		submissions set<uuid>,
+		submissions set<timeuuid>,
 		source set<text>,
 
 		md5 text,
@@ -125,11 +135,11 @@ func (s *Cassandra) Setup() error {
 		email_sub_addressing text,
 
 		generic_identifier text,
-                generic_type text
+                generic_type text,
                 generic_data_rel_address text,
-	PRIMARY KEY ((type, source), first_submission_date_time, id)
+	PRIMARY KEY ((sha256), creation_date_time)
 	)
-	WITH CLUSTERING ORDER BY (first_submission_date_time DESC)
+	WITH CLUSTERING ORDER BY (creation_date_time DESC)
 	WITH compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
@@ -137,9 +147,21 @@ func (s *Cassandra) Setup() error {
 	if err := s.DB.Query(tableObjects).Exec(); err != nil {
 		return err
 	}
+	tableObjectsByTypeFile := `CREATE MATERIALIZED VIEW objects_by_type_file(
+		AS SELECT creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name
+		FROM objects
+		WHERE file_mime IS NOT NULL
+			creation_date_time IS NOT NULL
+			sha256 IS NOT NULL
+			AND type = 'file'
+		PRIMARY KEY((file_mime), creation_date_time, sha256)
+		WITH CLUSTERING ORDER BY (creation_date_time DESC);`
+	if err := s.DB.Query(tableObjectsByTypeFile).Exec(); err != nil {
+		return err
+	}
 
 	tableSubmissions := `CREATE TABLE submissions(
-		id uuid,
+		id timeuuid,
 		sha256 text,
 		user_id text,
 		source text,
@@ -147,19 +169,39 @@ func (s *Cassandra) Setup() error {
 		obj_name text,
 		tags set<text>,
 		comment text,
-	PRIMARY KEY ((sha256, source), date_time, id)
+	PRIMARY KEY ((sha256), id)
 	)
-	WITH CLUSTERING ORDER BY (date_time DESC)
-	WITH compression = { 
+	WITH CLUSTERING ORDER BY (id DESC)
+	AND compression = { 
 		'enabled': 'true', 
 		'class' : 'LZ4Compressor' 
-	}
-	WITH 
-	;`
+	};`
 	if err := s.DB.Query(tableSubmissions).Exec(); err != nil {
 		return err
 	}
-
+	tableSubmissionsByUser := `CREATE MATERIALIZED VIEW submissions_by_user_id(
+		AS SELECT *
+		FROM submissions
+		WHERE user_id IS NOT NULL 
+			AND id IS NOT NULL 
+			AND sha256 IS NOT NULL
+		PRIMARY KEY((user_id), id, sha256)
+		WITH CLUSTERING ORDER BY (id desc);`
+	if err := s.DB.Query(tableSubmissionsByUser).Exec(); err != nil {
+		return err
+	}	
+	tableSubmissionsBySource := `CREATE MATERIALIZED VIEW submissions_by_source(
+		AS SELECT *
+		FROM submissions
+		WHERE source IS NOT NULL 
+			AND id IS NOT NULL 
+			AND sha256 IS NOT NULL
+		PRIMARY KEY((source), id, sha256)
+		WITH CLUSTERING ORDER BY (id desc);`
+	if err := s.DB.Query(tableSubmissionsBySource).Exec(); err != nil {
+		return err
+	}	
+	
 	tableConfig := `CREATE TABLE config(
 		path text PRIMARY KEY,
 		file_contents text
