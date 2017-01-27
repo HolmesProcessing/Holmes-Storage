@@ -63,11 +63,10 @@ type Storage interface {
 }
 
 type Object struct {
-	Id              string    `json:"id"`
-	Type            string    `json:"type"`
-	CreatedDateTime time.Time `json:"created_date_time"`
-	Submissions     []string  `json:"submissions"`
-	Source          []string  `json:"source"`
+	Type             string    `json:"type"`
+	CreationDateTime time.Time `json:"creation_date_time"`
+	Submissions      []string  `json:"submissions"`
+	Source           []string  `json:"source"`
 
 	MD5    string `json:"md5"`
 	SHA1   string `json:"sha1"`
@@ -86,9 +85,11 @@ type Object struct {
 	EmailAddress       string `json:"email_address"`
 	EmailLocalPart     string `json:"email_local_part"`
 	EmailDomainPart    string `json:"email_domain_part"`
-	EmailSubAddressing string `json:"email_address"`
+	EmailSubAddressing string `json:"email_sub_addressing"`
 
-	Generic_Identifier string `json:"generic_identifier"`
+	GenericIdentifier     string `json:"generic_identifier"`
+	GenericType           string `json:"generic_type"`
+	GenericDataRelAddress string `json:"generic_data_rel_address"`
 }
 
 type Submission struct {
@@ -116,11 +117,11 @@ type Result struct {
 	ObjectType        string    `json:"object_type"`
 	Results           string    `json:"results"`
 	Tags              []string  `json:"tags"`
-	StartedDateTime   time.Time `json:"started_date_time"`
-	FinishedDateTime  time.Time `json:"finished_date_time"`
+	ExecutionTime     time.Time `json:"execution_time"`
 	WatchguardStatus  string    `json:"watchguard_status"`
 	WatchguardLog     []string  `json:"watchguard_log"`
 	WatchguardVersion string    `json:"watchguard_version"`
+	Comment           string    `json:"comment"`
 }
 
 type Config struct {
