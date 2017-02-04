@@ -1,26 +1,15 @@
 # Holmes-Storage: A Storage Planner for Holmes Processing [![Build Status](https://travis-ci.org/HolmesProcessing/Holmes-Storage.svg?branch=master)](https://travis-ci.org/HolmesProcessing/Holmes-Storage)
 
 ## Overview
+Storage is one of the components of Holmes Processing. Its purpose is to create an abstraction before the database( called main-Storer ) and the file system for the virus data( called object-Storer )
 
+The purpose of the Holmes-Storage is getting file upload over HTTP and storing all the information about the upload. Furthermore, the system fetches the analysis reuslts over AMQP and stores them as well
+
+The stored information includes information about submission of virus-files, meta-information  about the files and analysis results.
+
+.
 
 ## Dependencies
-
-
-## Compilation
-
-
-## Installation
-* Copy the default configuration file located in config/storage.conf.example and change it according to your needs.
-* Setup the database by calling
-`./Holmes-Storage --config <path_to_config> --setup`
-This will create the configured keyspace if it does not exist yet. For cassandra, the default keyspace will use the following replication options: `{'class': 'NetworkTopologyStrategy', 'dc': '2'}`. If you want to change this, you can do so after the setup by connecting with `cqlsh` and changing it manually. For more information about that we refer to the official documentation of cassandra [Cassandra Replication](http://cassandra.apache.org/doc/latest/architecture/dynamo.html) [Altering Keyspace](https://docs.datastax.com/en/cql/3.1/cql/cql_reference/alter_keyspace_r.html)
-You can also create the keyspace with different replication options  before executing the setup and the setup won't overwrite that.
-The setup will also create the necessary tables and indices.
-* Setup the object storer by calling
-`./Holmes-Storage --config <path_to_config> --objSetup`
-* Execute storage by calling
-`./Holmes-Storage --config <path_to_config>`
-
 ### Supported Databases
 Holmes-Storage supports multiple databases and splits them into two categories: Object Stores and Document Stores. This was done to provide users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Store. 
 
@@ -37,9 +26,6 @@ We support two primary object storage databases. We recommend a Cassandra cluste
 
 ##### Cassandra 
 Holmes-Storage supports a single or cluster installation of Cassandra version 3.5.x and higher. The version requirement is because of the significant improvement in system performance when leveraging the newly introduced [SASIIndex](https://github.com/apache/cassandra/blob/trunk/doc/SASI.md) for secondary indexing. We highly recommend deploying Cassandra as a cluster with a minimum of three Cassandra nodes in production environments.
-
-###### Installation
-
 
 ###### Configuration
 New Cassandra clusters will need to be configured before Cassandra is started for the first time. We have highlighted a few of the configuration options that are critical or will improve performance. For additional options, please see the [Cassandra instillation guide](http://cassandra.apache.org/doc/latest/getting_started/configuring.html#main-runtime-properties). 
@@ -58,7 +44,56 @@ You should populate the "seeds" value with the IP addresses for at least two add
 The "listen_address" should be set to the external IP address for the current Cassandra node.
 `listen_address: <external ip address>`
 
-###### Best Practices
+
+
+
+
+
+
+
+
+##### RiakCS
+Follow [this](http://docs.basho.com/riak/cs/2.1.1/tutorials/fast-track/local-testing-environment/) tutorial for installation of RiakCS.
+###### Configuration
+After successful installation, the user’s access key and secret key are returned in the `key_id` and `key_secret` fields respectively. Use these keys to update **key** and **secret** your config file _( storage.conf.example )_
+
+Holmes-Storage uses Amazon S3 signature version 4 for authentication. To enable authV4 on riak-cs, add `{auth_v4_enabled, true}` to advanced.config file ( should be in `/riak-cs/etc/`)
+
+
+
+## Installation
+Copy the default configuration file located in config/storage.conf.example and change it according to your needs.
+```
+$ cp storage.conf.example storage.conf
+```
+Update the `storage.conf` file in config folder and adjust the ports if need accordingly.
+To build the Holmes-Storage, just run
+```
+$ go build
+```
+
+
+Setup the database by calling
+```
+$ ./Holmes-Storage --config <path_to_config> --setup
+```
+This will create the configured keyspace if it does not exist yet. For cassandra, the default keyspace will use the following replication options:
+```
+ {'class': 'NetworkTopologyStrategy', 'dc': '2'}
+```
+If you want to change this, you can do so after the setup by connecting with cqlsh and changing it manually. For more information about that we refer to the official documentation of cassandra Cassandra Replication Altering Keyspace You can also create the keyspace with different replication options before executing the setup and the setup won't overwrite that. The setup will also create the necessary tables and indices.
+
+Setup the object storer by calling:
+```
+$ ./Holmes-Storage --config <path_to_config> --objSetup
+```
+
+Execute storage by calling:
+```
+$ ./Holmes-Storage --config <path_to_config>
+```
+
+## Best Practices
 On a new cluster, Holmes-Storage will setup the database in an optimal way for the average user. However, we recommend Cassandra users to please read the [Cassandra's Operations website](http://wiki.apache.org/cassandra/Operations) for more information Cassandra best practices.  Additionally, it is critical that the Cassandra cluster be regularly repaired using `nodetool repair` command. We recommend that this is executed on every node, one at a time, at least once a weekly.
 
 ###### Indexing
