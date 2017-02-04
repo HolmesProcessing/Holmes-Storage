@@ -51,6 +51,8 @@ func main() {
 		}
 	}
 
+	ctx.Info.Println("Initialization complete")
+
 	go http.Start(ctx)
 	amqp.Start(ctx)
 }
