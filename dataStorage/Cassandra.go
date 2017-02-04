@@ -358,41 +358,81 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	// more than one implies an update.
 	if l == 1 {
 		inserted = true
-		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name, domain_fqdn, domain_tld, domain_sub_domain, ip_address, ip_v6, email_address, email_local_part, email_domain_part, email_sub_addressing, generic_identifier, generic_type, generic_data_rel_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	}
+
+	if obj.Type == "file" {
+		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			obj.Type,
 			obj.CreationDateTime,
-			obj.Submissions,
-			obj.Source,
+			submission_ids,
+			source,
 			obj.MD5,
 			obj.SHA1,
 			obj.SHA256,
 			obj.FileMime,
-			obj.FileName,
+			file_name,
+		).Exec()
+	} else if obj.Type == "domain" {
+		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, domain_fqdn, domain_tld, domain_sub_domain) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			obj.Type,
+			obj.CreationDateTime,
+			submission_ids,
+			source,
+			obj.MD5,
+			obj.SHA1,
+			obj.SHA256,
 			obj.DomainFQDN,
 			obj.DomainTLD,
 			obj.DomainSubDomain,
+		).Exec()
+	} else if obj.Type == "ip" {
+		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, ip_address, ip_v6) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			obj.Type,
+			obj.CreationDateTime,
+			submission_ids,
+			source,
+			obj.MD5,
+			obj.SHA1,
+			obj.SHA256,
 			obj.IPAddress,
 			obj.IPv6,
+		).Exec()
+	} else if obj.Type == "email" {
+		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, email_address, email_local_part, email_domain_part, email_sub_addressing) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			obj.Type,
+			obj.CreationDateTime,
+			submission_ids,
+			source,
+			obj.MD5,
+			obj.SHA1,
+			obj.SHA256,
 			obj.EmailAddress,
 			obj.EmailLocalPart,
 			obj.EmailDomainPart,
 			obj.EmailSubAddressing,
+		).Exec()
+	} else if obj.Type == "generic" {
+		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, generic_identifier, generic_type, generic_data_rel_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			obj.Type,
+			obj.CreationDateTime,
+			submission_ids,
+			source,
+			obj.MD5,
+			obj.SHA1,
+			obj.SHA256,
 			obj.GenericIdentifier,
 			obj.GenericType,
 			obj.GenericDataRelAddress,
-		).Exec()
-	} else {
-		err = s.DB.Query(`UPDATE objects SET source = ?,  file_name = ?, submissions = ? WHERE sha256 = ?`,
-			source,
-			file_name,
-			submission_ids,
-			obj.SHA256,
 		).Exec()
 	}
 
 	obj.Source = source
 	obj.FileName = file_name
 	obj.Submissions = submission_ids
+
+	if err != nil {
+		fmt.Println("ERRRRRRRRR:", err.Error())
+	}
 
 	return inserted, err
 }
@@ -515,6 +555,7 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 			submission, err = s.SubmissionGet(id)
 		}
 	}()
+	recoverLock.RLock()
 
 	submission = &Submission{}
 
@@ -523,7 +564,6 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 		return submission, err
 	}
 
-	recoverLock.RLock()
 	err = s.DB.Query("SELECT id, sha256, user_id, source, date_time, obj_name, tags, comment FROM submissions WHERE id = ? LIMIT 1", uuid).Scan(
 		&submission.Id,
 		&submission.SHA256,
@@ -543,14 +583,10 @@ func (s *Cassandra) SubmissionGet(id string) (submission *Submission, err error)
 }
 
 func (s *Cassandra) SubmissionStore(sub *Submission) error {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return err
-	}
-
+	id := gocql.TimeUUID()
 	sub.Id = id.String()
 
-	err = s.DB.Query("INSERT INTO submissions (id, sha256, user_id, source, date_time, obj_name, tags, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+	err := s.DB.Query("INSERT INTO submissions (id, sha256, user_id, source, date_time, obj_name, tags, comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		id,
 		sub.SHA256,
 		sub.UserId,

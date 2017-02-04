@@ -208,13 +208,15 @@ func sampleStore(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	// create structs for db
 	object := &dataStorage.Object{
-		SHA256:      sha256String,
-		SHA1:        sha1String,
-		MD5:         md5String,
-		FileMime:    mimeType,
-		Source:      []string{""},
-		FileName:    []string{""},
-		Submissions: []string{""},
+		Type:             "file",
+		CreationDateTime: time.Now(),
+		SHA256:           sha256String,
+		SHA1:             sha1String,
+		MD5:              md5String,
+		FileMime:         mimeType,
+		Source:           []string{""},
+		FileName:         []string{""},
+		Submissions:      []string{""},
 	}
 
 	date, err := time.Parse(time.RFC3339, r.FormValue("date"))
