@@ -1,13 +1,14 @@
 # Holmes-Storage: A Storage Planner for Holmes Processing [![Build Status](https://travis-ci.org/HolmesProcessing/Holmes-Storage.svg?branch=master)](https://travis-ci.org/HolmesProcessing/Holmes-Storage)
 
 ## Overview
-Storage is one of the components of Holmes Processing. Its purpose is to create an abstraction before the database( called main-Storer ) and the file system for the virus data( called object-Storer )
+Holmes-Storage is responsible for managing the interaction of Holmes Processing with the database backends. At its core, Holmes-Storage organizes the information contained in Holmes Processing and provides a RESTful and AMQP interface for accessing the data. Additionally, Holmes-Storage provides an abstraction layer between the specific database types. This allows a Holmes Processing system to change database types and combine different databases together for optimization.
 
-The purpose of the Holmes-Storage is getting file upload over HTTP and storing all the information about the upload. Furthermore, the system fetches the analysis reuslts over AMQP and stores them as well
+When running, Holmes-Storage will:
+- Automatically fetches the analysis reuslts from Holmes-Totem and Holmes-Totem-Dynamic over AMQP for storage
+- Support the submission on objects via a RESTful API
+- Support the retrieval of results, raw objects, object meta-data, and object submission information via a RESTful API
 
-The stored information includes information about submission of virus-files, meta-information  about the files and analysis results.
-
-.
+We have designed Holmes-Storage to operate as a reference implementation. In doing so, we have optimized the system to seamlessly plug into other parts of Holmes Processing and optimized the storage of information for generic machine learning algorithms and queries through a web frontend. Furthermore, we have seperated the storage of binary blobs and textural data in order to better handle how data is stored and compressed. As such, Holmes-Storage will store file based objects (i.e. ELF, PE32, PDF, etc) in a S3 compatible backend and the meta information of the objects and results from analysis in Cassandra. With respect to non-file type objects, these are purely stored in Cassandra. In our internal production systems, this scheme has supported 10s of million of objects along with the results from associated Totem and Totem-Dynamic Services with minimal effort. However, as with any enterprise system, customization will be required to improve the performance for custom use cases. Anyway, we hope this serves you well or at least helps guide you in developing custom Holmes-Storage Planners.
 
 ## Dependencies
 ### Supported Databases
@@ -44,22 +45,12 @@ You should populate the "seeds" value with the IP addresses for at least two add
 The "listen_address" should be set to the external IP address for the current Cassandra node.
 `listen_address: <external ip address>`
 
-
-
-
-
-
-
-
-
 ##### RiakCS
 Follow [this](http://docs.basho.com/riak/cs/2.1.1/tutorials/fast-track/local-testing-environment/) tutorial for installation of RiakCS.
 ###### Configuration
 After successful installation, the user’s access key and secret key are returned in the `key_id` and `key_secret` fields respectively. Use these keys to update **key** and **secret** your config file _( storage.conf.example )_
 
 Holmes-Storage uses Amazon S3 signature version 4 for authentication. To enable authV4 on riak-cs, add `{auth_v4_enabled, true}` to advanced.config file ( should be in `/riak-cs/etc/`)
-
-
 
 ## Installation
 Copy the default configuration file located in config/storage.conf.example and change it according to your needs.
@@ -71,7 +62,6 @@ To build the Holmes-Storage, just run
 ```
 $ go build
 ```
-
 
 Setup the database by calling
 ```
