@@ -1,10 +1,6 @@
 package Status
 
-import (
-	"github.com/ms-xy/Holmes-Planner-Monitor/go/msgtypes"
-
-	"net"
-)
+import ()
 
 // Data structures containing information about all planners and their services
 // on a single machine, identified by its uuid.
@@ -54,27 +50,3 @@ import (
 //   Broadcast net.IP
 //   Scope     string
 // }
-
-type SystemInformation struct {
-	SystemStatus  *msgtypes.SystemStatus
-	NetworkStatus *msgtypes.NetworkStatus
-	Planners      map[uint64]*PlannerInformation
-}
-
-type PlannerInformation struct {
-	Name          string
-	PID           uint64
-	IP            net.IP
-	Port          int
-	Configuration string
-	Logs          *LogBuffer
-	Services      map[uint16]*ServiceInformation
-}
-
-type ServiceInformation struct {
-	Configuration string
-	Name          string
-	Port          uint16
-	Task          string
-	Logs          *LogBuffer
-}

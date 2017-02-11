@@ -13,7 +13,8 @@ import (
 )
 
 type StorerCassandra struct {
-	DB *gocql.Session
+	DB       *gocql.Session
+	StatusDB *gocql.Session
 }
 
 func (s StorerCassandra) PrepareCluster(c []*storerGeneric.DBConnector) (*gocql.ClusterConfig, error) {

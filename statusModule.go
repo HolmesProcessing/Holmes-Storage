@@ -6,6 +6,7 @@ import (
 	"github.com/ms-xy/Holmes-Planner-Monitor/go/server"
 
 	"github.com/HolmesProcessing/Holmes-Storage/statusModule"
+	"github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
 
 	"fmt"
 	"log"
@@ -15,10 +16,10 @@ import (
 // Initialize this module, effectively launching goroutines to handle incoming
 // and outgoing traffic.
 // *This function blocks.*
-func initStatusModule(httpBinding string, warning, info, debug *log.Logger) {
+func initStatusModule(httpBinding string, mainStorer storerGeneric.Storer, warning, info, debug *log.Logger) {
 	Status.InitLogging(warning, info, debug)
 
-	router := Status.NewRouter()
+	router := Status.NewRouter(mainStorer)
 	server.ListenAndServe(httpBinding, router) // does not block
 
 	httprouter := httprouter.New()
