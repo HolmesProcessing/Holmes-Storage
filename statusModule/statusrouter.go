@@ -120,8 +120,8 @@ func (this *Router) RecvPlannerInfo(plannerinfo *msgtypes.PlannerInfo, session *
 		// Create a new planner, if the uuid combination is unknown
 		if planner == nil {
 			var (
-				ipaddr      = ""
-				uint16 port = 0
+				ipaddr        = ""
+				port   uint16 = 0
 			)
 			if plannerinfo.ListenAddress != nil {
 				ipaddr = plannerinfo.ListenAddress.IP.String()
