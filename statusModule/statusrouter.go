@@ -119,12 +119,22 @@ func (this *Router) RecvPlannerInfo(plannerinfo *msgtypes.PlannerInfo, session *
 
 		// Create a new planner, if the uuid combination is unknown
 		if planner == nil {
+			var (
+				ipaddr      = ""
+				uint16 port = 0
+			)
+			if plannerinfo.ListenAddress {
+				if plannerinfo.ListenAddress.IP {
+					ipaddr = plannerinfo.ListenAddress.IP.String()
+				}
+				port = uint16(plannerinfo.ListenAddress.Port)
+			}
 			planner = &storerGeneric.Planner{
 				MachineUUID: machine_uuid,
 				PlannerUUID: planner_uuid,
 				Name:        plannerinfo.Name,
-				IP:          plannerinfo.ListenAddress.IP.String(),
-				Port:        uint16(plannerinfo.ListenAddress.Port),
+				IP:          ipaddr,
+				Port:        port,
 				FirstSeen:   now,
 				LastSeen:    now,
 			}
@@ -204,6 +214,7 @@ func (this *Router) RecvNetworkStatus(networkstatus *msgtypes.NetworkStatus, ses
 		// the struct more, so that unmarshalling makes sense
 		bytes, _ := json.Marshal(networkstatus.Interfaces)
 		machine.NetworkInterfaces = string(bytes)
+		this.db.UpdateMachine(machine)
 	}
 	return
 }
