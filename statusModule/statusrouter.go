@@ -63,7 +63,6 @@ func (this *Router) runLivelinessCheck(sessions *server.SessionMap) {
 // mechanism allows us to keep track of malfunctioning planners without
 // accidentally mixing it up with correctly disconnected planners.
 func (this *Router) RecvPlannerInfo(plannerinfo *msgtypes.PlannerInfo, session *server.Session) (cm *msgtypes.ControlMessage) {
-
 	var (
 		machine_uuid = session.GetMachineUuid().ToString()
 		planner_uuid = session.GetUuid().ToString()
@@ -102,8 +101,8 @@ func (this *Router) RecvPlannerInfo(plannerinfo *msgtypes.PlannerInfo, session *
 		now := time.Now()
 
 		// Create a new machine, if previously unknown
-		_, err := this.db.GetPlanners(machine_uuid, 1)
-		if err == gocql.ErrNotFound {
+		planners, err := this.db.GetPlanners(machine_uuid, 1)
+		if err == gocql.ErrNotFound || len(planners) == 0 {
 			err = this.db.StoreMachine(&storerGeneric.Machine{
 				MachineUUID: machine_uuid,
 				FirstSeen:   now,
@@ -170,12 +169,19 @@ func (this *Router) RecvPlannerInfo(plannerinfo *msgtypes.PlannerInfo, session *
 }
 
 func (this *Router) RecvSystemStatus(s *msgtypes.SystemStatus, session *server.Session) (cm *msgtypes.ControlMessage) {
-	machine_uuid := session.GetMachineUuid().ToString()
-	if _, err := this.db.GetMachine(machine_uuid); err == gocql.ErrNotFound {
+	var (
+		machine_uuid = session.GetMachineUuid().ToString()
+	)
+	if machine, err := this.db.GetMachine(machine_uuid); err == gocql.ErrNotFound {
 		warning.Println("Received SystemStatus for an unregistered machine (" + machine_uuid + ") from " + session.Address.String())
 	} else if err != nil {
 		return this.HandleError(err, session)
 	} else {
+		machine.LastSeen = time.Now()
+		if err := this.db.UpdateMachine(machine); err != nil {
+			return this.HandleError(err, session)
+		}
+
 		err := this.db.StoreSystemStatus(&storerGeneric.SystemStatus{
 			MachineUUID: machine_uuid,
 			CpuIOWait:   s.CpuIOWait,
@@ -207,12 +213,19 @@ func (this *Router) RecvNetworkStatus(networkstatus *msgtypes.NetworkStatus, ses
 	} else if err != nil {
 		return this.HandleError(err, session)
 	} else {
+		machine.LastSeen = time.Now()
+		if err := this.db.UpdateMachine(machine); err != nil {
+			return this.HandleError(err, session)
+		}
 		// previously unmarshalled, ignore error
 		// TODO: either undo previous unmarshalling, or make db representation match
 		// the struct more, so that unmarshalling makes sense
 		bytes, _ := json.Marshal(networkstatus.Interfaces)
 		machine.NetworkInterfaces = string(bytes)
-		this.db.UpdateMachine(machine)
+		err = this.db.UpdateMachine(machine)
+		if err != nil {
+			return this.HandleError(err, session)
+		}
 	}
 	return
 }
@@ -222,24 +235,35 @@ func (this *Router) RecvPlannerStatus(plannerstatus *msgtypes.PlannerStatus, ses
 		machine_uuid = session.GetMachineUuid().ToString()
 		planner_uuid = session.GetUuid().ToString()
 	)
-	if planner, err := this.db.GetPlanner(machine_uuid, planner_uuid); err == gocql.ErrNotFound {
-		warning.Println("Received PlannerStatus for an unregistered planner (" + planner_uuid + ") from: " + session.Address.String())
+	if machine, err := this.db.GetMachine(machine_uuid); err == gocql.ErrNotFound {
+		warning.Println("Received PlannerStatus for an unregistered machine (" + machine_uuid + ") from: " + session.Address.String())
 	} else if err != nil {
 		return this.HandleError(err, session)
 	} else {
-		if plannerstatus.ConfigProfileName != "" {
-			planner.Configuration = plannerstatus.ConfigProfileName
+		machine.LastSeen = time.Now()
+		if err := this.db.UpdateMachine(machine); err != nil {
+			return this.HandleError(err, session)
 		}
-		if plannerstatus.Logs != nil && len(plannerstatus.Logs) > 0 {
-			logs := make([]*storerGeneric.LogEntry, len(plannerstatus.Logs))
-			now := time.Now()
-			for i, logmsg := range plannerstatus.Logs {
-				logs[i] = &storerGeneric.LogEntry{
-					Message:   logmsg,
-					Timestamp: now, // TODO somehow get real time of the log message
-				}
+
+		if planner, err := this.db.GetPlanner(machine_uuid, planner_uuid); err == gocql.ErrNotFound {
+			warning.Println("Received PlannerStatus for an unregistered planner (" + planner_uuid + ") from: " + session.Address.String())
+		} else if err != nil {
+			return this.HandleError(err, session)
+		} else {
+			if plannerstatus.ConfigProfileName != "" {
+				planner.Configuration = plannerstatus.ConfigProfileName
 			}
-			this.db.StorePlannerLogs(planner_uuid, logs)
+			if plannerstatus.Logs != nil && len(plannerstatus.Logs) > 0 {
+				logs := make([]*storerGeneric.LogEntry, len(plannerstatus.Logs))
+				now := time.Now()
+				for i, logmsg := range plannerstatus.Logs {
+					logs[i] = &storerGeneric.LogEntry{
+						Message:   logmsg,
+						Timestamp: now, // TODO somehow get real time of the log message
+					}
+				}
+				this.db.StorePlannerLogs(planner_uuid, logs)
+			}
 		}
 	}
 	return
@@ -251,35 +275,46 @@ func (this *Router) RecvServiceStatus(sstat *msgtypes.ServiceStatus, session *se
 		planner_uuid = session.GetUuid().ToString()
 		service_port = sstat.Port
 	)
-	if _, err := this.db.GetPlanner(machine_uuid, planner_uuid); err == gocql.ErrNotFound {
-		warning.Println("Received ServiceStatus for an unregistered planner (" + planner_uuid + ") from: " + session.Address.String())
+	if machine, err := this.db.GetMachine(machine_uuid); err == gocql.ErrNotFound {
+		warning.Println("Received ServiceStatus for an unregistered machine (" + machine_uuid + ") from: " + session.Address.String())
 	} else if err != nil {
-		this.HandleError(err, session)
+		return this.HandleError(err, session)
 	} else {
-		if service, err := this.db.GetService(planner_uuid, service_port); err == gocql.ErrNotFound {
-			service = &storerGeneric.Service{
-				PlannerUUID:   planner_uuid,
-				Port:          service_port,
-				ServiceUUID:   gocql.TimeUUID().String(),
-				Name:          sstat.Name,
-				Configuration: sstat.ConfigProfileName,
-			}
-			err = this.db.StoreService(service)
-			if err != nil {
-				return this.HandleError(err, session)
-			}
-		} else if err != nil {
+		machine.LastSeen = time.Now()
+		if err := this.db.UpdateMachine(machine); err != nil {
 			return this.HandleError(err, session)
+		}
+
+		if _, err = this.db.GetPlanner(machine_uuid, planner_uuid); err == gocql.ErrNotFound {
+			warning.Println("Received ServiceStatus for an unregistered planner (" + planner_uuid + ") from: " + session.Address.String())
+		} else if err != nil {
+			this.HandleError(err, session)
 		} else {
-			if sstat.Name != "" {
-				service.Name = sstat.Name
-			}
-			if sstat.ConfigProfileName != "" {
-				service.Configuration = sstat.ConfigProfileName
-			}
-			err = this.db.UpdateService(service)
-			if err != nil {
+			if service, err := this.db.GetService(planner_uuid, service_port); err == gocql.ErrNotFound {
+				service = &storerGeneric.Service{
+					PlannerUUID:   planner_uuid,
+					Port:          service_port,
+					ServiceUUID:   gocql.TimeUUID().String(),
+					Name:          sstat.Name,
+					Configuration: sstat.ConfigProfileName,
+				}
+				err = this.db.StoreService(service)
+				if err != nil {
+					return this.HandleError(err, session)
+				}
+			} else if err != nil {
 				return this.HandleError(err, session)
+			} else {
+				if sstat.Name != "" {
+					service.Name = sstat.Name
+				}
+				if sstat.ConfigProfileName != "" {
+					service.Configuration = sstat.ConfigProfileName
+				}
+				err = this.db.UpdateService(service)
+				if err != nil {
+					return this.HandleError(err, session)
+				}
 			}
 		}
 	}
