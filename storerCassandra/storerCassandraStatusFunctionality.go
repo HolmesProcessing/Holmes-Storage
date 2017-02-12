@@ -100,7 +100,11 @@ func (this StorerCassandra) UpdateMachine(m *sg.Machine) error {
 	if _, err := gocql.ParseUUID(m.MachineUUID); err != nil {
 		return err
 	}
-	return this.StatusDB.Query(query_update_machine, m.Harddrives, m.NetworkInterfaces, m.MachineUUID).Exec()
+	err := this.StatusDB.Query(query_update_machine, m.Harddrives, m.NetworkInterfaces, m.MachineUUID).Exec()
+	if err == nil {
+		err = this.StatusDB.Query(query_insert_machine_lastseen, m.MachineUUID, m.LastSeen).Exec()
+	}
+	return err
 }
 
 func (this StorerCassandra) UpdatePlanner(p *sg.Planner) error {
@@ -110,7 +114,11 @@ func (this StorerCassandra) UpdatePlanner(p *sg.Planner) error {
 	if _, err := gocql.ParseUUID(p.PlannerUUID); err != nil {
 		return err
 	}
-	return this.StatusDB.Query(query_update_planner, p.Name, p.IP, p.Port, p.Configuration, p.MachineUUID, p.PlannerUUID).Exec()
+	err := this.StatusDB.Query(query_update_planner, p.Name, p.IP, p.Port, p.Configuration, p.MachineUUID, p.PlannerUUID).Exec()
+	if err == nil {
+		err = this.StatusDB.Query(query_insert_planner_lastseen, p.PlannerUUID, p.LastSeen).Exec()
+	}
+	return err
 }
 
 func (this StorerCassandra) UpdateService(s *sg.Service) error {
