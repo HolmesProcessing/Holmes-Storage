@@ -123,10 +123,8 @@ func (this *Router) RecvPlannerInfo(plannerinfo *msgtypes.PlannerInfo, session *
 				ipaddr      = ""
 				uint16 port = 0
 			)
-			if plannerinfo.ListenAddress {
-				if plannerinfo.ListenAddress.IP {
-					ipaddr = plannerinfo.ListenAddress.IP.String()
-				}
+			if plannerinfo.ListenAddress != nil {
+				ipaddr = plannerinfo.ListenAddress.IP.String()
 				port = uint16(plannerinfo.ListenAddress.Port)
 			}
 			planner = &storerGeneric.Planner{
