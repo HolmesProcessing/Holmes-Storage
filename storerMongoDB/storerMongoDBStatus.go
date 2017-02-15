@@ -124,3 +124,14 @@ func (s StorerMongoDB) GetServiceLogs(service_uuid string, startDate, endDate ti
 func (s StorerMongoDB) GetServiceTasks(service_uuid string, startDate, endDate time.Time, limit int) ([]*sg.TaskEntry, error) {
 	return nil, nil
 }
+
+// KV storage functions
+func (s StorerMongoDB) KvSet(path, value string) error {
+	return nil
+}
+func (s StorerMongoDB) KvGet(path string) (string, error) {
+	return "", nil
+}
+func (s StorerMongoDB) KvDel(path string) error {
+	return nil
+}

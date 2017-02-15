@@ -102,6 +102,7 @@ func (s StorerCassandra) SetupStatus() error {
       harddrives          TEXT,
       network_interfaces  TEXT,
       first_seen          TIMESTAMP,
+      last_seen           TIMESTAMP,
       PRIMARY KEY ((machine_uuid))
     );
   `
@@ -109,24 +110,25 @@ func (s StorerCassandra) SetupStatus() error {
 		return err
 	}
 
-	tableMachinesLastSeenTs := `
-    CREATE TABLE IF NOT EXISTS machines_lastseen_ts (
-      machine_uuid        UUID,
-      last_seen           TIMESTAMP,
-      PRIMARY KEY ((machine_uuid), last_seen)
-    )
-    WITH
-      CLUSTERING ORDER BY (last_seen DESC)
-    AND
-      compaction = {
-        'class': 'DateTieredCompactionStrategy',
-        'base_time_seconds':'300'
-      }
-    ;
-  `
-	if err := s.DB.Query(tableMachinesLastSeenTs).Exec(); err != nil {
-		return err
-	}
+	// this table is not satisfactory ...
+	// tableMachinesLastSeenTs := `
+	//    CREATE TABLE IF NOT EXISTS machines_lastseen_ts (
+	//      machine_uuid        UUID,
+	//      last_seen           TIMESTAMP,
+	//      PRIMARY KEY ((last_seen))
+	//    )
+	//    WITH
+	//      CLUSTERING ORDER BY (last_seen DESC)
+	//    AND
+	//      compaction = {
+	//        'class': 'DateTieredCompactionStrategy',
+	//        'base_time_seconds':'300'
+	//      }
+	//    ;
+	//  `
+	// if err := s.DB.Query(tableMachinesLastSeenTs).Exec(); err != nil {
+	// 	return err
+	// }
 
 	tableMachinesSystemStatusTs := `
     CREATE TABLE IF NOT EXISTS machines_systemstatus_ts (
@@ -167,6 +169,7 @@ func (s StorerCassandra) SetupStatus() error {
       port          INT,
       configuration TEXT,
       first_seen    TIMESTAMP,
+      last_seen     TIMESTAMP,
       PRIMARY KEY ((machine_uuid), planner_uuid)
     );
   `
@@ -174,24 +177,25 @@ func (s StorerCassandra) SetupStatus() error {
 		return err
 	}
 
-	tablePlannersLastSeenTs := `
-    CREATE TABLE IF NOT EXISTS planners_lastseen_ts (
-      planner_uuid UUID,
-      last_seen    TIMESTAMP,
-      PRIMARY KEY ((planner_uuid), last_seen)
-    )
-    WITH
-      CLUSTERING ORDER BY (last_seen DESC)
-    AND
-      compaction = {
-        'class': 'DateTieredCompactionStrategy',
-        'base_time_seconds':'300'
-      }
-    ;
-  `
-	if err := s.DB.Query(tablePlannersLastSeenTs).Exec(); err != nil {
-		return err
-	}
+	// tablePlannersLastSeenTs := `
+	//    CREATE TABLE IF NOT EXISTS planners_lastseen_ts (
+	//      machine_uuid UUID,
+	//      last_seen    TIMESTAMP,
+	//      planner_uuid UUID,
+	//      PRIMARY KEY ((machine_uuid), last_seen)
+	//    )
+	//    WITH
+	//      CLUSTERING ORDER BY (last_seen DESC)
+	//    AND
+	//      compaction = {
+	//        'class': 'DateTieredCompactionStrategy',
+	//        'base_time_seconds':'300'
+	//      }
+	//    ;
+	//  `
+	// if err := s.DB.Query(tablePlannersLastSeenTs).Exec(); err != nil {
+	// 	return err
+	// }
 
 	tablePlannersLogsTs := `
     CREATE TABLE IF NOT EXISTS planners_logs_ts (
@@ -264,6 +268,36 @@ func (s StorerCassandra) SetupStatus() error {
     ;
   `
 	if err := s.DB.Query(tableServicesTasksTs).Exec(); err != nil {
+		return err
+	}
+
+	// parent = 00000-.....-00000 = neutral ID
+	tableKvStore := `
+    CREATE TABLE IF NOT EXISTS kvstore (
+      parent  UUID,
+      id      UUID,
+      key     VARCHAR,
+      path    VARCHAR,
+      value   TEXT,
+      PRIMARY KEY ((parent), id)
+    )
+    WITH
+      CLUSTERING ORDER BY (id ASC)
+    ;
+  `
+	if err := s.DB.Query(tableKvStore).Exec(); err != nil {
+		return err
+	}
+
+	tableKvStoreSecondary := `
+    CREATE TABLE IF NOT EXISTS kvstore_secondary (
+      path    VARCHAR,
+      parent  UUID,
+      id      UUID,
+      PRIMARY KEY ((path))
+    );
+  `
+	if err := s.DB.Query(tableKvStoreSecondary).Exec(); err != nil {
 		return err
 	}
 

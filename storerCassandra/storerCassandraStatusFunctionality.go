@@ -1,13 +1,13 @@
 package StorerCassandra
 
 import (
-	// "errors"
-	// "fmt"
+	"errors"
+	"regexp"
+	"strings"
 	"time"
 
-	"github.com/gocql/gocql"
-
 	sg "github.com/HolmesProcessing/Holmes-Storage/storerGeneric"
+	"github.com/gocql/gocql"
 )
 
 // general purpose constants
@@ -215,10 +215,10 @@ func (this StorerCassandra) GetMachines(limit int) ([]*sg.Machine, error) {
 			&results[i].NetworkInterfaces,
 			&results[i].FirstSeen,
 		)
-		err2 = this.StatusDB.Query(query_machine_lastseen, results[i].MachineUUID).Scan(&results[i].LastSeen)
-		if err2 != nil {
-			ok = false
-		}
+		// err2 = this.StatusDB.Query(query_machine_lastseen, results[i].MachineUUID).Scan(&results[i].LastSeen)
+		// if err2 != nil {
+		// ok = false
+		// }
 		if !ok {
 			break
 		}
@@ -638,4 +638,194 @@ func (this StorerCassandra) DeleteServices(planner_uuid string) error {
 		return err
 	}
 	return this.StatusDB.Query(query_delete_services_of_planner, planner_uuid).Exec()
+}
+
+// -------------------------------------------------------------------------- //
+// Key value store functionality.
+// -------------------------------------------------------------------------- //
+var (
+	// The value did change s
+	ChangedValueError = errors.New("ChangedValueError")
+)
+
+const (
+	query_kvstore_select = `
+    SELECT key, value FROM kvstore
+    WHERE parent=? AND id=?;`
+	query_kvstore_insert = `
+    INSERT INTO kvstore (parent, id, key, value)
+    VALUES (?, ?, ?, ?)
+    IF NOT EXISTS;`
+	query_kvstore_update = `
+    UPDATE kvstore SET value=?
+    WHERE parent=? AND id=?
+    IF value=?;`
+	query_kvstore_delete = `
+    DELETE FROM kvstore
+    WHERE parent=? AND id=?;`
+
+	query_kvIndex_select = `
+    SELECT parent, id FROM kvstore_secondary
+    WHERE path=?;`
+	query_kvIndex_insert = `
+    INSERT INTO kvstore_secondary (path, parent, id)
+    VALUES (?, ?, uuid())
+    IF NOT EXISTS;`
+	query_kvIndex_update = `
+    UPDATE kvstore_secondary SET parent=?
+    WHERE path=?
+    IF parent=?;`
+	query_kvIndex_delete = `
+    DELETE FROM kvstore_secondary
+    WHERE path=?;`
+)
+
+// helper functions for kvs
+func (this StorerCassandra) _kvs_select(parent, id gocql.UUID) (string, string, error) {
+	var key, value string
+	err := this.StatusDB.Query(query_kvstore_select, parent, id).Scan(&key, &value)
+	return key, value, err
+}
+
+func (this StorerCassandra) _kvs_insert(parent, id gocql.UUID, key, value string) error {
+	return this.StatusDB.Query(query_kvstore_insert, parent, id, key, value).Exec()
+}
+
+func (this StorerCassandra) _kvs_update(parent, id gocql.UUID, value, prev_value string) error {
+	return this.StatusDB.Query(query_kvstore_update, value, parent, id, prev_value).Exec()
+}
+
+func (this StorerCassandra) _kvs_delete(parent, id gocql.UUID) error {
+	return this.StatusDB.Query(query_kvstore_delete, parent, id).Exec()
+}
+
+// helper functions for kvsIndex
+func (this StorerCassandra) _kvsIndex_select(path string) (gocql.UUID, gocql.UUID, error) {
+	var parent, id gocql.UUID
+	err := this.StatusDB.Query(query_kvIndex_select, path).Scan(&parent, &id)
+	return parent, id, err
+}
+
+func (this StorerCassandra) _kvsIndex_insert(path string, parent gocql.UUID) error {
+	return this.StatusDB.Query(query_kvIndex_insert, path, parent).Exec()
+}
+
+func (this StorerCassandra) _kvsIndex_update(path string, parent gocql.UUID) error {
+	return this.StatusDB.Query(query_kvIndex_update, parent, path, parent).Exec()
+}
+
+func (this StorerCassandra) _kvsIndex_delete(path string) error {
+	return this.StatusDB.Query(query_kvIndex_delete, path).Exec()
+}
+
+// helper functions for main functions
+func (this StorerCassandra) _kvsIndex_createPath(path string) error {
+	var (
+		s          = 1
+		key        = ""
+		next_path  = ""
+		parent, id gocql.UUID
+		err        error
+	)
+	for {
+		switch s {
+		case 1: // start
+			if path == "" {
+				return nil
+			}
+			i := strings.Index(path, "/")
+			if i == -1 {
+				i = len(path)
+				key = path[0:i]
+				path = ""
+			} else {
+				key = path[0:i]
+				path = path[i+1 : len(path)]
+			}
+			if len(next_path) > 0 {
+				next_path = next_path + "/" + key
+			} else {
+				next_path = key
+			}
+			s = 2 // --> goto select path
+
+		case 2: // select path
+			if _, id, err = this._kvsIndex_select(next_path); err == gocql.ErrNotFound {
+				s = 3 // --> goto insert path
+			} else if err == nil {
+				parent = id
+				s = 1 // --> goto start
+			} else {
+				return err
+			}
+
+		case 3: // create path
+			if err = this._kvsIndex_insert(next_path, parent); err != nil {
+				return err
+			}
+			if _, id, err = this._kvsIndex_select(next_path); err != nil {
+				return err
+			}
+			if err = this._kvs_insert(parent, id, key, ""); err != nil {
+				return err
+			}
+			s = 2 // --> goto select
+		}
+	}
+}
+
+// Main abstracted functions
+func (this StorerCassandra) KvSet(path, value string) error {
+	var (
+		err        error
+		parent, id gocql.UUID
+		prev_value string
+	)
+	// clean path
+	path = re_clean_path.ReplaceAllString(strings.Trim(path, "/"), "/")
+
+	// make sure the path exists
+	for {
+		if parent, id, err = this._kvsIndex_select(path); err == gocql.ErrNotFound {
+			err = this._kvsIndex_createPath(path)
+		} else if err == nil {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	// select our primary
+	key := path[(strings.LastIndex(path, "/") + 1):len(path)]
+	if _, prev_value, err = this._kvs_select(parent, id); err == gocql.ErrNotFound {
+		return this._kvs_insert(parent, id, key, value)
+	} else if err == nil {
+		return this._kvs_update(parent, id, value, prev_value)
+	} else {
+		return err
+	}
+}
+
+var (
+	re_clean_path = regexp.MustCompile(`/+`)
+)
+
+func (this StorerCassandra) KvGet(path string) (string, error) {
+	// clean path
+	path = re_clean_path.ReplaceAllString(strings.Trim(path, "/"), "/")
+	// find it
+	var value string
+	parent, id, err := this._kvsIndex_select(path)
+	if err == nil {
+		_, value, err = this._kvs_select(parent, id)
+		if err == gocql.ErrNotFound {
+			err = nil
+		}
+	}
+	return value, err
+}
+
+func (this StorerCassandra) KvDel(path string) error {
+	return this.KvSet(path, "")
 }

@@ -262,7 +262,9 @@ func (this *Router) RecvPlannerStatus(plannerstatus *msgtypes.PlannerStatus, ses
 						Timestamp: now, // TODO somehow get real time of the log message
 					}
 				}
-				this.db.StorePlannerLogs(planner_uuid, logs)
+				if err = this.db.StorePlannerLogs(planner_uuid, logs); err != nil {
+					return this.HandleError(err, session)
+				}
 			}
 		}
 	}

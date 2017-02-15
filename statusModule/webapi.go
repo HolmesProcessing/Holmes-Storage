@@ -4,14 +4,17 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/ms-xy/Holmes-Planner-Monitor/go/msgtypes"
-	"github.com/ms-xy/Holmes-Planner-Monitor/go/server"
+	// "github.com/ms-xy/Holmes-Planner-Monitor/go/server"
 
 	"github.com/gocql/gocql"
 
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"time"
+
+	"fmt"
 )
 
 func httpSendJson(w http.ResponseWriter, data interface{}) {
@@ -66,22 +69,12 @@ func (this *Router) HttpGetNetinfo(w http.ResponseWriter, r *http.Request, ps ht
 }
 
 func (this *Router) HttpGetMachineUuids(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	sessions := server.GetSessions()
-
-	i := 0
-	size := sessions.SizeMachines()
-	machine_uuids := make([]string, size)
-
-	sessions.ForEachMachine(func(machine_uuid *msgtypes.UUID, planners map[uint64]*server.Session) {
-		if i < size {
-			machine_uuids[i] = machine_uuid.ToString()
-			i++
-		} else {
-			machine_uuids = append(machine_uuids, machine_uuid.ToString())
-		}
-	})
-
-	httpSendJson(w, machine_uuids)
+	machines, err := this.db.GetMachines(-1)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	} else {
+		httpSendJson(w, machines)
+	}
 }
 
 func (this *Router) HttpGetSysinfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -98,5 +91,48 @@ func (this *Router) HttpGetSysinfo(w http.ResponseWriter, r *http.Request, ps ht
 
 	} else {
 		http.Error(w, "invalid machine_uuid: "+err.Error(), 404)
+	}
+}
+
+// KV store functions
+
+func (this *Router) HttpKvGet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if path := ps.ByName("path"); path != "" {
+		if value, err := this.db.KvGet(path); err == nil {
+			w.WriteHeader(200)
+			w.Write([]byte(value))
+		} else {
+			http.Error(w, err.Error(), 500) // todo enable 404
+		}
+	} else {
+		http.Error(w, "supplied path must not be empty", 400)
+	}
+}
+
+func (this *Router) HttpKvSet(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+	value := string(bytes)
+
+	if path := ps.ByName("path"); path != "" && value > "" {
+		if err := this.db.KvSet(path, value); err == nil {
+			w.WriteHeader(200)
+		} else {
+			http.Error(w, err.Error(), 500) // todo enable 404
+		}
+	} else {
+		http.Error(w, "supplied path and request-body must not be empty", 400)
+	}
+}
+
+func (this *Router) HttpKvDel(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if path := ps.ByName("path"); path != "" {
+		if err := this.db.KvDel(path); err == nil {
+			w.WriteHeader(200)
+		} else {
+			http.Error(w, err.Error(), 500) // todo enable 404
+		}
+	} else {
+		http.Error(w, "supplied path must not be empty", 400)
 	}
 }

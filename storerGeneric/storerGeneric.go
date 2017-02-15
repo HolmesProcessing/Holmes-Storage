@@ -108,6 +108,11 @@ type Storer interface {
 	GetPlannerLogs(planner_uuid string, startDate, endDate time.Time, limit int) ([]*LogEntry, error)
 	GetServiceLogs(service_uuid string, startDate, endDate time.Time, limit int) ([]*LogEntry, error)
 	GetServiceTasks(service_uuid string, startDate, endDate time.Time, limit int) ([]*TaskEntry, error)
+
+	// Ability to store and retrieve arbitrary configuration data
+	KvSet(path, value string) error
+	KvGet(path string) (string, error)
+	KvDel(path string) error
 }
 
 type Object struct {
