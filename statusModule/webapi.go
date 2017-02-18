@@ -13,8 +13,6 @@ import (
 	"net/http"
 	"reflect"
 	"time"
-
-	"fmt"
 )
 
 func httpSendJson(w http.ResponseWriter, data interface{}) {
