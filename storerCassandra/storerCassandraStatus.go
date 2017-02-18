@@ -66,7 +66,7 @@ func (s StorerCassandra) CreateDBStatus(c []*storerGeneric.DBConnector) error {
 	}
 
 	query = fmt.Sprintf(`CREATE KEYSPACE IF NOT EXISTS %s WITH replication =
-    {'class': 'NetworkTopologyStrategy', 'dc1': '2'};`, c[0].StatusDatabase)
+    {'class': 'NetworkTopologyStrategy', 'datacenter1': '1'};`, c[0].StatusDatabase)
 
 	if err := db.Query(query).Exec(); err != nil {
 		return err
@@ -102,33 +102,27 @@ func (s StorerCassandra) SetupStatus() error {
       harddrives          TEXT,
       network_interfaces  TEXT,
       first_seen          TIMESTAMP,
-      last_seen           TIMESTAMP,
       PRIMARY KEY ((machine_uuid))
-    );
+    )
+    WITH
+      default_time_to_live = 3600
+    ;
   `
 	if err := s.DB.Query(tableMachines).Exec(); err != nil {
 		return err
 	}
 
-	// this table is not satisfactory ...
-	// tableMachinesLastSeenTs := `
-	//    CREATE TABLE IF NOT EXISTS machines_lastseen_ts (
-	//      machine_uuid        UUID,
-	//      last_seen           TIMESTAMP,
-	//      PRIMARY KEY ((last_seen))
-	//    )
-	//    WITH
-	//      CLUSTERING ORDER BY (last_seen DESC)
-	//    AND
-	//      compaction = {
-	//        'class': 'DateTieredCompactionStrategy',
-	//        'base_time_seconds':'300'
-	//      }
-	//    ;
-	//  `
-	// if err := s.DB.Query(tableMachinesLastSeenTs).Exec(); err != nil {
-	// 	return err
-	// }
+	// this table is not satisfactory ... but the only possibility it seems
+	tableMachinesLastSeen := `
+	   CREATE TABLE IF NOT EXISTS machines_lastseen (
+	     machine_uuid        UUID,
+	     last_seen           TIMESTAMP,
+	     PRIMARY KEY ((machine_uuid))
+	   );
+	 `
+	if err := s.DB.Query(tableMachinesLastSeen).Exec(); err != nil {
+		return err
+	}
 
 	tableMachinesSystemStatusTs := `
     CREATE TABLE IF NOT EXISTS machines_systemstatus_ts (
@@ -149,6 +143,8 @@ func (s StorerCassandra) SetupStatus() error {
     )
     WITH
       CLUSTERING ORDER BY (timestamp DESC)
+    AND
+      default_time_to_live = 300
     AND
       compaction = {
         'class': 'DateTieredCompactionStrategy',
@@ -171,31 +167,26 @@ func (s StorerCassandra) SetupStatus() error {
       first_seen    TIMESTAMP,
       last_seen     TIMESTAMP,
       PRIMARY KEY ((machine_uuid), planner_uuid)
-    );
+    )
+    WITH
+      default_time_to_live = 3600
+    ;
   `
 	if err := s.DB.Query(tablePlanners).Exec(); err != nil {
 		return err
 	}
 
-	// tablePlannersLastSeenTs := `
-	//    CREATE TABLE IF NOT EXISTS planners_lastseen_ts (
-	//      machine_uuid UUID,
-	//      last_seen    TIMESTAMP,
-	//      planner_uuid UUID,
-	//      PRIMARY KEY ((machine_uuid), last_seen)
-	//    )
-	//    WITH
-	//      CLUSTERING ORDER BY (last_seen DESC)
-	//    AND
-	//      compaction = {
-	//        'class': 'DateTieredCompactionStrategy',
-	//        'base_time_seconds':'300'
-	//      }
-	//    ;
-	//  `
-	// if err := s.DB.Query(tablePlannersLastSeenTs).Exec(); err != nil {
-	// 	return err
-	// }
+	// bad, but only possibility it seems
+	tablePlannersLastSeen := `
+	   CREATE TABLE IF NOT EXISTS planners_lastseen (
+       planner_uuid UUID,
+	     last_seen    TIMESTAMP,
+	     PRIMARY KEY ((planner_uuid))
+	   );
+	 `
+	if err := s.DB.Query(tablePlannersLastSeen).Exec(); err != nil {
+		return err
+	}
 
 	tablePlannersLogsTs := `
     CREATE TABLE IF NOT EXISTS planners_logs_ts (
@@ -206,6 +197,8 @@ func (s StorerCassandra) SetupStatus() error {
     )
     WITH
       CLUSTERING ORDER BY (timestamp DESC)
+    AND
+      default_time_to_live = 3600
     AND
       compaction = {
         'class': 'DateTieredCompactionStrategy',
@@ -225,7 +218,10 @@ func (s StorerCassandra) SetupStatus() error {
       name          TEXT,
       configuration TEXT,
       PRIMARY KEY ((planner_uuid), port)
-    );
+    )
+    WITH
+      default_time_to_live = 3600
+    ;
   `
 	if err := s.DB.Query(tableServices).Exec(); err != nil {
 		return err
@@ -240,6 +236,8 @@ func (s StorerCassandra) SetupStatus() error {
     )
     WITH
       CLUSTERING ORDER BY (timestamp DESC)
+    AND
+      default_time_to_live = 3600
     AND
       compaction = {
         'class': 'DateTieredCompactionStrategy',
@@ -260,6 +258,8 @@ func (s StorerCassandra) SetupStatus() error {
     )
     WITH
       CLUSTERING ORDER BY (timestamp DESC)
+    AND
+      default_time_to_live = 3600
     AND
       compaction = {
         'class': 'DateTieredCompactionStrategy',

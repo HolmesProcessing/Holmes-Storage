@@ -16,7 +16,7 @@ const (
 )
 
 // -------------------------------------------------------------------------- //
-// Storage functions.
+// Insert functions.
 // -------------------------------------------------------------------------- //
 const (
 	query_insert_machine = `
@@ -30,11 +30,11 @@ const (
     VALUES (?, ?, ?, ?, ?);`
 
 	query_insert_machine_lastseen = `
-    INSERT INTO machines_lastseen_ts (machine_uuid, last_seen)
+    INSERT INTO machines_lastseen (machine_uuid, last_seen)
     VALUES (?, ?)
     USING TTL 300;`
 	query_insert_planner_lastseen = `
-    INSERT INTO planners_lastseen_ts (planner_uuid, last_seen)
+    INSERT INTO planners_lastseen (planner_uuid, last_seen)
     VALUES (?, ?)
     USING TTL 300;`
 )
@@ -81,6 +81,11 @@ const (
       harddrives = ?,
       network_interfaces = ?
     WHERE machine_uuid = ?;`
+	query_update_machine_lastseen = `
+    UPDATE machines_lastseen SET
+      last_seen = ?
+    WHERE machine_uuid = ?;`
+
 	query_update_planner = `
     UPDATE planners SET
       name = ?,
@@ -88,6 +93,11 @@ const (
       port = ?,
       configuration = ?
     WHERE machine_uuid = ? AND planner_uuid = ?;`
+	query_update_planner_lastseen = `
+    UPDATE planners_lastseen SET
+      last_seen = ?
+    WHERE planner_uuid = ?`
+
 	query_update_service = `
     UPDATE services SET
       service_uuid = ?,
@@ -102,7 +112,7 @@ func (this StorerCassandra) UpdateMachine(m *sg.Machine) error {
 	}
 	err := this.StatusDB.Query(query_update_machine, m.Harddrives, m.NetworkInterfaces, m.MachineUUID).Exec()
 	if err == nil {
-		err = this.StatusDB.Query(query_insert_machine_lastseen, m.MachineUUID, m.LastSeen).Exec()
+		err = this.StatusDB.Query(query_update_machine_lastseen, m.LastSeen, m.MachineUUID).Exec()
 	}
 	return err
 }
@@ -116,7 +126,7 @@ func (this StorerCassandra) UpdatePlanner(p *sg.Planner) error {
 	}
 	err := this.StatusDB.Query(query_update_planner, p.Name, p.IP, p.Port, p.Configuration, p.MachineUUID, p.PlannerUUID).Exec()
 	if err == nil {
-		err = this.StatusDB.Query(query_insert_planner_lastseen, p.PlannerUUID, p.LastSeen).Exec()
+		err = this.StatusDB.Query(query_update_planner_lastseen, p.LastSeen, p.PlannerUUID).Exec()
 	}
 	return err
 }
@@ -141,9 +151,9 @@ const (
     SELECT machine_uuid, harddrives, network_interfaces, first_seen
     FROM machines
     LIMIT ?;`
-	query_machine_lastseen = `
+	query_get_machine_lastseen = `
     SELECT last_seen
-    FROM machines_lastseen_ts
+    FROM machines_lastseen
     WHERE machine_uuid = ?
     LIMIT 1;`
 
@@ -161,9 +171,9 @@ const (
     SELECT planner_uuid, name, ip, port, configuration, first_seen
     FROM planners
     LIMIT ?;`
-	query_planner_lastseen = `
+	query_get_planner_lastseen = `
     SELECT last_seen
-    FROM planners_lastseen_ts
+    FROM planners_lastseen
     WHERE planner_uuid = ?
     LIMIT 1;`
 
@@ -192,7 +202,7 @@ func (this StorerCassandra) GetMachine(machine_uuid string) (*sg.Machine, error)
 		&result.FirstSeen,
 	)
 	if err == nil {
-		err = this.StatusDB.Query(query_machine_lastseen, machine_uuid).Scan(&result.LastSeen)
+		err = this.StatusDB.Query(query_get_machine_lastseen, machine_uuid).Scan(&result.LastSeen)
 	}
 	return result, err
 }
@@ -201,31 +211,30 @@ func (this StorerCassandra) GetMachines(limit int) ([]*sg.Machine, error) {
 	if limit == -1 {
 		limit = max_limit
 	}
-	iter := this.StatusDB.Query(query_get_machines, limit).Iter()
-	count := iter.NumRows()
-	results := make([]*sg.Machine, count)
 	var (
-		err2 error
+		iter    = this.StatusDB.Query(query_get_machines, limit).Iter()
+		count   = iter.NumRows()
+		results = make([]*sg.Machine, count)
+		ok      = true
+		err     error
 	)
-	for i := 0; i < count; i++ {
+	for i := 0; i < count && ok; i++ {
 		results[i] = &sg.Machine{}
-		ok := iter.Scan(
+		ok = iter.Scan(
 			&results[i].MachineUUID,
 			&results[i].Harddrives,
 			&results[i].NetworkInterfaces,
 			&results[i].FirstSeen,
 		)
-		// err2 = this.StatusDB.Query(query_machine_lastseen, results[i].MachineUUID).Scan(&results[i].LastSeen)
-		// if err2 != nil {
-		// ok = false
-		// }
-		if !ok {
-			break
+		if ok {
+			err = this.StatusDB.Query(query_get_machine_lastseen, results[i].MachineUUID).Scan(&results[i].LastSeen)
+			if err != nil {
+				break
+			}
 		}
 	}
-	err := iter.Close()
 	if err == nil {
-		err = err2
+		err = iter.Close()
 	}
 	return results, err
 }
@@ -239,12 +248,10 @@ func (this StorerCassandra) GetPlanner(machine_uuid, planner_uuid string) (*sg.P
 	if err != nil {
 		return nil, err
 	}
-
-	result := &sg.Planner{
-		MachineUUID: machine_uuid,
-		PlannerUUID: planner_uuid,
-	}
-	var port int
+	var (
+		result = &sg.Planner{MachineUUID: machine_uuid, PlannerUUID: planner_uuid}
+		port   int
+	)
 	err = this.StatusDB.Query(query_get_planner, machine_uuid, planner_uuid).Scan(
 		&result.Name,
 		&result.IP,
@@ -253,6 +260,9 @@ func (this StorerCassandra) GetPlanner(machine_uuid, planner_uuid string) (*sg.P
 		&result.FirstSeen,
 	)
 	result.Port = uint16(port)
+	if err == nil {
+		err = this.StatusDB.Query(query_get_planner_lastseen, planner_uuid).Scan(&result.LastSeen)
+	}
 	return result, err
 }
 
@@ -273,15 +283,15 @@ func (this StorerCassandra) GetPlanners(machine_uuid string, limit int) ([]*sg.P
 		}
 		iter = this.StatusDB.Query(query_get_planners, machine_uuid, limit).Iter()
 	}
-	count := iter.NumRows()
-	results := make([]*sg.Planner, count)
 	var (
-		port int
-		err2 error
+		count   = iter.NumRows()
+		results = make([]*sg.Planner, count)
+		port    int
+		ok      = true
 	)
-	for i := 0; i < count; i++ {
+	for i := 0; i < count && ok; i++ {
 		results[i] = &sg.Planner{MachineUUID: machine_uuid}
-		ok := iter.Scan(
+		ok = iter.Scan(
 			&results[i].PlannerUUID,
 			&results[i].Name,
 			&results[i].IP,
@@ -290,17 +300,15 @@ func (this StorerCassandra) GetPlanners(machine_uuid string, limit int) ([]*sg.P
 			&results[i].FirstSeen,
 		)
 		results[i].Port = uint16(port)
-		err2 = this.StatusDB.Query(query_planner_lastseen, results[i].PlannerUUID).Scan(&results[i].LastSeen)
-		if err2 != nil {
-			ok = false
-		}
-		if !ok {
-			break
+		if ok {
+			err = this.StatusDB.Query(query_get_planner_lastseen, results[i].PlannerUUID).Scan(&results[i].LastSeen)
+			if err != nil {
+				break
+			}
 		}
 	}
-	err = iter.Close()
 	if err == nil {
-		err = err2
+		err = iter.Close()
 	}
 	return results, err
 }
