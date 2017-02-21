@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -77,11 +78,19 @@ func (this *Router) HttpGetMachineUuids(w http.ResponseWriter, r *http.Request, 
 
 func (this *Router) HttpGetSysinfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	if machine_uuid, err := msgtypes.UUIDFromString(ps.ByName("machine_uuid")); err == nil {
-
-		start := time.Time{}
-		end := time.Now()
-
-		if systemstatus, err := this.db.GetSystemStatus(machine_uuid.ToString(), start, end, 1); err == nil {
+		var (
+			start       = time.Time{}
+			end         = time.Now()
+			limit int64 = 1
+			err   error
+		)
+		if limit_str := ps.ByName("limit"); limit_str != "" {
+			if limit, err = strconv.ParseInt(limit_str, 10, 32); err != nil {
+				http.Error(w, err.Error(), 400)
+				return
+			}
+		}
+		if systemstatus, err := this.db.GetSystemStatus(machine_uuid.ToString(), start, end, int(limit)); err == nil {
 			httpSendJson(w, systemstatus)
 		} else {
 			http.Error(w, "error fetching systemstatus from db: "+err.Error(), 404)

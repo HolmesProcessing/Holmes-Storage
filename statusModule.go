@@ -26,7 +26,7 @@ func initStatusModule(httpBinding string, mainStorer storerGeneric.Storer, warni
 	httprouter.GET("/status/get_machines", router.HttpGetMachineUuids)
 	httprouter.GET("/status/get_netinfo/:machine_uuid", router.HttpGetNetinfo)
 	httprouter.GET("/status/get_planners/:machine_uuid", router.HttpGetPlanners)
-	httprouter.GET("/status/get_sysinfo/:machine_uuid", router.HttpGetSysinfo)
+	httprouter.GET("/status/get_sysinfo/:machine_uuid/:limit", router.HttpGetSysinfo)
 	httprouter.GET("/kv/get/*path", router.HttpKvGet)
 	httprouter.PUT("/kv/set/*path", router.HttpKvSet)
 	httprouter.DELETE("/kv/del/*path", router.HttpKvDel)
