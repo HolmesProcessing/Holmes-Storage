@@ -82,7 +82,7 @@ func (s *Cassandra) Setup() error {
         object_type text,
         results text,
         tags set<text>,
-        execution_time time,
+        execution_time timestamp,
         watchguard_status text,
         watchguard_log list<text>,
         watchguard_version text,
@@ -96,6 +96,8 @@ func (s *Cassandra) Setup() error {
 	if err := s.DB.Query(tableResults).Exec(); err != nil {
 		return err
 	}
+
+	time.Sleep(time.Second * 10)
 
 	tableResultsBySHA256 := `CREATE MATERIALIZED VIEW results_by_sha256 AS
         SELECT * FROM results
@@ -215,16 +217,16 @@ func (s *Cassandra) Setup() error {
 
 	// Add SASI indexes for results
 	tableResultsIndex := `CREATE CUSTOM INDEX results_comment_idx 
-		ON results (comment) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'analyzed' : 'true', 
-			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-			'tokenization_enable_stemming' : 'true', 
-			'tokenization_locale' : 'en', 
-			'tokenization_normalize_lowercase' : 'true', 
-			'tokenization_skip_stop_words' : 'true'
-		};`
+        ON results (comment) 
+        USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+        WITH OPTIONS = {
+            'analyzed' : 'true', 
+            'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
+            'tokenization_enable_stemming' : 'true', 
+            'tokenization_locale' : 'en', 
+            'tokenization_normalize_lowercase' : 'true', 
+            'tokenization_skip_stop_words' : 'true'
+        };`
 	if err := s.DB.Query(tableResultsIndex).Exec(); err != nil {
 		return err
 	}
@@ -250,24 +252,24 @@ func (s *Cassandra) Setup() error {
 
 	// Add SASI indexes for objects
 	tableObjectsIndex := `CREATE CUSTOM INDEX objects_md5_idx 
-		ON objects (md5) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex';`
+        ON objects (md5) 
+        USING 'org.apache.cassandra.index.sasi.SASIIndex';`
 	if err := s.DB.Query(tableObjectsIndex).Exec(); err != nil {
 		return err
 	}
 
 	// Add SASI indexes for submissions
 	tableSubmissionsIndex := `CREATE CUSTOM INDEX submissions_comment_idx 
-		ON submissions (comment) 
-		USING 'org.apache.cassandra.index.sasi.SASIIndex' 
-		WITH OPTIONS = {
-			'analyzed' : 'true', 
-			'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
-			'tokenization_enable_stemming' : 'true', 
-			'tokenization_locale' : 'en', 
-			'tokenization_normalize_lowercase' : 'true', 
-			'tokenization_skip_stop_words' : 'true'
-		};`
+        ON submissions (comment) 
+        USING 'org.apache.cassandra.index.sasi.SASIIndex' 
+        WITH OPTIONS = {
+            'analyzed' : 'true', 
+            'analyzer_class' : 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 
+            'tokenization_enable_stemming' : 'true', 
+            'tokenization_locale' : 'en', 
+            'tokenization_normalize_lowercase' : 'true', 
+            'tokenization_skip_stop_words' : 'true'
+        };`
 	if err := s.DB.Query(tableSubmissionsIndex).Exec(); err != nil {
 		return err
 	}
@@ -335,16 +337,14 @@ func (s *Cassandra) ObjectGet(sha256 string) (object *Object, err error) {
 }
 
 func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
+	inserted := true
+
 	submissions, err := s.SubmissionsGetByObject(obj.SHA256)
 	if err != nil {
 		return false, err
 	}
 
 	l := len(submissions)
-	if l == 0 {
-		return false, errors.New("Tried to store an object which was never submited!")
-	}
-
 	source := make([]string, l)
 	file_name := make([]string, l)
 	submission_ids := make([]string, l)
@@ -353,12 +353,30 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 		file_name[k] = v.ObjName
 		submission_ids[k] = v.Id
 	}
-	inserted := false
-	// just one submission implies a new object
-	// more than one implies an update.
-	if l == 1 {
-		inserted = true
+
+	if l == 0 {
+		return false, errors.New("Object was never submitted!")
 	}
+
+	if l > 1 {
+		// the object is known so we just update the information
+		objFromDB, err := s.ObjectGet(obj.SHA256)
+
+		inserted = false
+
+		err = s.DB.Query(`UPDATE objects SET source = ?,  file_name = ?, submissions = ? WHERE sha256 = ? AND type = ? AND creation_date_time = ?`,
+			source,
+			file_name,
+			submission_ids,
+			objFromDB.SHA256,
+			objFromDB.Type,
+			objFromDB.CreationDateTime,
+		).Exec()
+
+		return inserted, err
+	}
+
+	// the object is unknown, hence we insert it
 
 	if obj.Type == "file" {
 		err = s.DB.Query("INSERT INTO objects (type, creation_date_time, submissions, source, md5, sha1, sha256, file_mime, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -429,10 +447,6 @@ func (s *Cassandra) ObjectStore(obj *Object) (bool, error) {
 	obj.Source = source
 	obj.FileName = file_name
 	obj.Submissions = submission_ids
-
-	if err != nil {
-		fmt.Println("ERRRRRRRRR:", err.Error())
-	}
 
 	return inserted, err
 }

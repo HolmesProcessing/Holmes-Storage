@@ -17,7 +17,7 @@ type S3 struct {
 	Bucket string
 }
 
-func (s S3) Initialize(c []*Connector) error {
+func (s *S3) Initialize(c []*Connector) error {
 	if len(c) < 1 {
 		return errors.New("Supply at least one node to connect to!")
 	}
@@ -47,7 +47,7 @@ func (s S3) Initialize(c []*Connector) error {
 	return err
 }
 
-func (s S3) Setup() error {
+func (s *S3) Setup() error {
 	// test if the bucket already exists
 	_, err := s.DB.ListObjects(&amazons3.ListObjectsInput{
 		Bucket: &s.Bucket,
@@ -71,7 +71,7 @@ func (s S3) Setup() error {
 	return nil
 }
 
-func (s S3) SampleDelete(sample *Sample) error {
+func (s *S3) SampleDelete(sample *Sample) error {
 	_, err := s.DB.DeleteObject(&amazons3.DeleteObjectInput{
 		Bucket: &s.Bucket,
 		Key:    &sample.SHA256,
@@ -80,7 +80,7 @@ func (s S3) SampleDelete(sample *Sample) error {
 	return err
 }
 
-func (s S3) SampleStore(sample *Sample) error {
+func (s *S3) SampleStore(sample *Sample) error {
 	_, err := s.DB.PutObject(&amazons3.PutObjectInput{
 		Body:   bytes.NewReader(sample.Data),
 		Bucket: &s.Bucket,
@@ -90,7 +90,7 @@ func (s S3) SampleStore(sample *Sample) error {
 	return err
 }
 
-func (s S3) SampleGet(id string) (*Sample, error) {
+func (s *S3) SampleGet(id string) (*Sample, error) {
 	sample := &Sample{SHA256: id}
 
 	resp, err := s.DB.GetObject(&amazons3.GetObjectInput{

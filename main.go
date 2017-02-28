@@ -35,7 +35,7 @@ func main() {
 
 	if setup {
 		err := ctx.Data.Setup()
-		if err != nil {
+		if err == nil {
 			ctx.Info.Println("Setup complete, no errors")
 		} else {
 			ctx.Info.Panic("Setup couldn't finish without errors: " + err.Error())
@@ -44,7 +44,7 @@ func main() {
 
 	if objSetup {
 		err := ctx.Objects.Setup()
-		if err != nil {
+		if err == nil {
 			ctx.Info.Println("objSetup complete, no errors")
 		} else {
 			ctx.Info.Panic("objSetup couldn't finish without errors: " + err.Error())
