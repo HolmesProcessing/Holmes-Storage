@@ -97,8 +97,6 @@ func (s *Cassandra) Setup() error {
 		return err
 	}
 
-	time.Sleep(time.Second * 10)
-
 	tableResultsBySHA256 := `CREATE MATERIALIZED VIEW results_by_sha256 AS
         SELECT * FROM results
         WHERE sha256 IS NOT NULL 
