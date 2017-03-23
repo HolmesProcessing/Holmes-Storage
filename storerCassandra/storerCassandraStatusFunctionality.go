@@ -26,8 +26,8 @@ const (
     INSERT INTO planners (machine_uuid, planner_uuid, name, ip, port, configuration, first_seen)
     VALUES (?, ?, ?, ?, ?, ?, ?);`
 	query_insert_service = `
-    INSERT INTO services (planner_uuid, service_uuid, name, port, configuration)
-    VALUES (?, ?, ?, ?, ?);`
+    INSERT INTO services (service_uuid, name, uri, configuration)
+    VALUES (?, ?, ?, ?);`
 
 	query_insert_machine_lastseen = `
     INSERT INTO machines_lastseen (machine_uuid, last_seen)
@@ -65,11 +65,11 @@ func (this StorerCassandra) StorePlanner(p *sg.Planner) error {
 }
 
 func (this StorerCassandra) StoreService(s *sg.Service) error {
-	if _, err := gocql.ParseUUID(s.PlannerUUID); err != nil {
-		return err
-	}
+	// if _, err := gocql.ParseUUID(s.PlannerUUID); err != nil {
+	// 	return err
+	// }
 	s.ServiceUUID = gocql.TimeUUID().String()
-	return this.StatusDB.Query(query_insert_service, s.PlannerUUID, s.ServiceUUID, s.Name, s.Port, s.Configuration).Exec()
+	return this.StatusDB.Query(query_insert_service, s.ServiceUUID, s.Name, s.Uri, s.Configuration).Exec()
 }
 
 // -------------------------------------------------------------------------- //
@@ -100,10 +100,9 @@ const (
 
 	query_update_service = `
     UPDATE services SET
-      service_uuid = ?,
       name = ?,
       configuration = ?
-    WHERE planner_uuid = ? AND port = ?;`
+    WHERE uri = ?;`
 )
 
 func (this StorerCassandra) UpdateMachine(m *sg.Machine) error {
@@ -132,10 +131,7 @@ func (this StorerCassandra) UpdatePlanner(p *sg.Planner) error {
 }
 
 func (this StorerCassandra) UpdateService(s *sg.Service) error {
-	if _, err := gocql.ParseUUID(s.PlannerUUID); err != nil {
-		return err
-	}
-	return this.StatusDB.Query(query_update_service, s.ServiceUUID, s.Name, s.Configuration, s.PlannerUUID, int(s.Port)).Exec()
+	return this.StatusDB.Query(query_update_service, s.Name, s.Configuration, s.Uri).Exec()
 }
 
 // -------------------------------------------------------------------------- //
@@ -178,14 +174,13 @@ const (
     LIMIT 1;`
 
 	query_get_service = `
-    SELECT service_uuid, name, configuration
+    SELECT name, configuration
     FROM services
-    WHERE planner_uuid = ? AND port = ?
+    WHERE uri = ?
     LIMIT 1;`
 	query_get_services = `
-    SELECT service_uuid, name, port, configuration
+    SELECT service_uuid, uri, name, configuration
     FROM services
-    WHERE planner_uuid = ?
     LIMIT ?;`
 )
 
@@ -313,51 +308,33 @@ func (this StorerCassandra) GetPlanners(machine_uuid string, limit int) ([]*sg.P
 	return results, err
 }
 
-func (this StorerCassandra) GetService(planner_uuid string, port uint16) (*sg.Service, error) {
-	_, err := gocql.ParseUUID(planner_uuid)
-	if err != nil {
-		return nil, err
-	}
-	result := &sg.Service{
-		PlannerUUID: planner_uuid,
-		Port:        port,
-	}
-	err = this.StatusDB.Query(query_get_service, planner_uuid, int(port)).Scan(
-		&result.ServiceUUID,
+func (this StorerCassandra) GetService(uri string) (*sg.Service, error) {
+	result := &sg.Service{}
+	err := this.StatusDB.Query(query_get_service, uri).Scan(
 		&result.Name,
 		&result.Configuration,
 	)
 	return result, err
 }
 
-func (this StorerCassandra) GetServices(planner_uuid string, limit int) ([]*sg.Service, error) {
-	_, err := gocql.ParseUUID(planner_uuid)
-	if err != nil {
-		return nil, err
-	}
+func (this StorerCassandra) GetServices(limit int) ([]*sg.Service, error) {
 	if limit == -1 {
 		limit = max_limit
 	}
-	iter := this.StatusDB.Query(query_get_services, planner_uuid, limit).Iter()
+	iter := this.StatusDB.Query(query_get_services, limit).Iter()
 	count := iter.NumRows()
 	results := make([]*sg.Service, count)
-	var (
-		port int
-	)
 	for i := 0; i < count; i++ {
-		results[i] = &sg.Service{PlannerUUID: planner_uuid}
-		ok := iter.Scan(
-			&results[i].ServiceUUID,
+		results[i] = &sg.Service{}
+		if ok := iter.Scan(
+			&results[i].Uri,
 			&results[i].Name,
-			&port,
 			&results[i].Configuration,
-		)
-		results[i].Port = uint16(port)
-		if !ok {
+		); !ok {
 			break
 		}
 	}
-	err = iter.Close()
+	err := iter.Close()
 	return results, err
 }
 

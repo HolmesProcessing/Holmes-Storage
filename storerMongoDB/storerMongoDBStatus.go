@@ -55,7 +55,7 @@ func (s StorerMongoDB) GetPlanner(machine_uuid, planner_uuid string) (*sg.Planne
 	return nil, nil
 }
 
-func (s StorerMongoDB) GetService(planner_uuid string, port uint16) (*sg.Service, error) {
+func (s StorerMongoDB) GetService(service_uri string) (*sg.Service, error) {
 	return nil, nil
 }
 
@@ -67,7 +67,7 @@ func (s StorerMongoDB) GetPlanners(machine_uuid string, limit int) ([]*sg.Planne
 	return nil, nil
 }
 
-func (s StorerMongoDB) GetServices(planner_uuid string, limit int) ([]*sg.Service, error) {
+func (s StorerMongoDB) GetServices(limit int) ([]*sg.Service, error) {
 	return nil, nil
 }
 

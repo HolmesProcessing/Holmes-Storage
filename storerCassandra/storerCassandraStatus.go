@@ -212,12 +212,10 @@ func (s StorerCassandra) SetupStatus() error {
 
 	tableServices := `
     CREATE TABLE IF NOT EXISTS services (
-      planner_uuid  UUID,
-      port          INT,
-      service_uuid  UUID,
+      uri           TEXT,
       name          TEXT,
       configuration TEXT,
-      PRIMARY KEY ((planner_uuid), port)
+      PRIMARY KEY (uri)
     )
     WITH
       default_time_to_live = 3600
@@ -229,10 +227,10 @@ func (s StorerCassandra) SetupStatus() error {
 
 	tableServicesLogsTs := `
     CREATE TABLE IF NOT EXISTS services_logs_ts (
-      service_uuid UUID,
+      uri          TEXT,
       timestamp    TIMESTAMP,
       message      TEXT,
-      PRIMARY KEY ((service_uuid), timestamp)
+      PRIMARY KEY (uri, timestamp)
     )
     WITH
       CLUSTERING ORDER BY (timestamp DESC)
@@ -251,10 +249,10 @@ func (s StorerCassandra) SetupStatus() error {
 
 	tableServicesTasksTs := `
     CREATE TABLE IF NOT EXISTS services_tasks_ts (
-      service_uuid UUID,
+      uri          TEXT,
       timestamp    TIMESTAMP,
       task         TEXT,
-      PRIMARY KEY ((service_uuid), timestamp)
+      PRIMARY KEY (uri, timestamp)
     )
     WITH
       CLUSTERING ORDER BY (timestamp DESC)

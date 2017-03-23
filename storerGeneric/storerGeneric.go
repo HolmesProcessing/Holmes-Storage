@@ -75,10 +75,10 @@ type Storer interface {
 	// results may be emitted.
 	GetMachine(machine_uuid string) (*Machine, error)
 	GetPlanner(machine_uuid, planner_uuid string) (*Planner, error)
-	GetService(planner_uuid string, port uint16) (*Service, error)
+	GetService(uri string) (*Service, error)
 	GetMachines(limit int) ([]*Machine, error)
 	GetPlanners(machine_uuid string, limit int) ([]*Planner, error)
-	GetServices(planner_uuid string, limit int) ([]*Service, error)
+	GetServices(limit int) ([]*Service, error)
 
 	// Update rows matching the given non-nil criteria
 	UpdateMachine(machine *Machine) error
@@ -201,8 +201,7 @@ type Planner struct {
 }
 
 type Service struct {
-	PlannerUUID   string `json:"planner_uuid"`
-	Port          uint16 `json:"port"`
+	Uri           string `json:"uri"`
 	ServiceUUID   string `json:"service_uuid"`
 	Name          string `json:"name"`
 	Configuration string `json:"configuration"`

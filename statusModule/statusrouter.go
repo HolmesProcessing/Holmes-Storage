@@ -275,7 +275,7 @@ func (this *Router) RecvServiceStatus(sstat *msgtypes.ServiceStatus, session *se
 	var (
 		machine_uuid = session.GetMachineUuid().ToString()
 		planner_uuid = session.GetUuid().ToString()
-		service_port = sstat.Port
+		service_uri  = sstat.Uri
 	)
 	if machine, err := this.db.GetMachine(machine_uuid); err == gocql.ErrNotFound {
 		warning.Println("Received ServiceStatus for an unregistered machine (" + machine_uuid + ") from: " + session.Address.String())
@@ -292,10 +292,9 @@ func (this *Router) RecvServiceStatus(sstat *msgtypes.ServiceStatus, session *se
 		} else if err != nil {
 			this.HandleError(err, session)
 		} else {
-			if service, err := this.db.GetService(planner_uuid, service_port); err == gocql.ErrNotFound {
+			if service, err := this.db.GetService(service_uri); err == gocql.ErrNotFound {
 				service = &storerGeneric.Service{
-					PlannerUUID:   planner_uuid,
-					Port:          service_port,
+					Uri:           service_uri,
 					ServiceUUID:   gocql.TimeUUID().String(),
 					Name:          sstat.Name,
 					Configuration: sstat.ConfigProfileName,
