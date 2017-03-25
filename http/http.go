@@ -41,29 +41,41 @@ func Start(c *context.Ctx) {
 	router := httprouter.New()
 
 	//... for data
-	router.GET("/object/get/:sha256", objectGet)
-	router.POST("/object/store", dummyHandler)
-	router.POST("/object/search", dummyHandler)
-	router.GET("/object/delete/:sha256", dummyHandler)
-	router.GET("/object/update/:sha256", dummyHandler)
+	router.GET("/api/v2/objects", objectGet) //get a list of recent objects or search
+	router.GET("/api/v2/objects/:sha256", objectGet) //get a specific object
+	router.POST("/api/v2/objects/", dummyHandler) //create a new object
+	router.PUT("/api/v2/objects", dummyHandler) //return 405 error
+	router.PUT("/api/v2/objects/:sha256", dummyHandler) //updates specific object
+	router.DELETE("/api/v2/objects/:sha256", dummyHandler) //delete specific object
 
-	router.GET("/result/get/:uuid", dummyHandler)
-	router.POST("/result/store", dummyHandler)
-	router.POST("/result/search", dummyHandler)
-	router.GET("/result/delete/:uuid", dummyHandler)
+	router.GET("/api/v2/results", dummyHandler) //get a list of recent results or search
+	router.GET("/api/v2/results/:uuid", dummyHandler) //get a specific result
+	router.POST("/api/v2/results/", dummyHandler) //create a new result
+	router.PUT("/api/v2/results", dummyHandler) //return 405 error
+	router.PUT("/api/v2/results/:uuid", dummyHandler) //updates specific result
+	router.DELETE("/api/v2/results/:uuid", dummyHandler) //delete a specific result
 
-	router.GET("/submission/get/:uuid", submissionGet)
-	router.POST("/submission/store", dummyHandler)
-	router.POST("/submission/search", dummyHandler)
-	router.GET("/submission/delete/:uuid", dummyHandler)
+	router.GET("/api/v2/submissions", dummyHandler) //get a list of recent submissions or search
+	router.GET("/api/v2/submissions/:uuid", submissionGet) //get a specific submissions
+	router.POST("/api/v2/submissions/", dummyHandler) //create a new submissions
+	router.PUT("/api/v2/submissions", dummyHandler) //return 405 error
+	router.PUT("/api/v2/submissions/:uuid", dummyHandler) //updates specific submissions
+	router.DELETE("/api/v2/submissions/:uuid", dummyHandler) //delete a specific submissions
 
-	router.GET("/config/get", dummyHandler)
-	router.POST("/config/store", dummyHandler)
+	//we don't have configs implemented yet. So I am just going to leave this here
+	//for future reference. 
+	router.GET("/api/v2/configs", dummyHandler) //get config
+	router.POST("/api/v2/configs/", dummyHandler) //create config
+	router.PUT("/api/v2/configs/", dummyHandler) //update config
+	router.DELETE("/api/v2/configs/", dummyHandler) //delete config
 
-	//... for objects
-	router.GET("/sample/get/:sha256", sampleGet)
-	router.POST("/sample/store", sampleStore)
-	router.GET("/sample/delete/:sha256", dummyHandler)
+
+	//... for raw_data
+	router.GET("/api/v2/raw_data", sampleGet) //return 405 error
+	router.GET("/api/v2/raw_data/:sha256", sampleGet) //get a specific raw data
+	router.POST("/api/v2/raw_data/", sampleStore) //create a new raw_data entry
+	router.PUT("/api/v2/raw_data", dummyHandler) //return 405 error
+	router.DELETE("/api/v2/raw_data/:sha256", dummyHandler)
 
 	// configure the http server
 	if c.Config.SSLCert != "" && c.Config.SSLKey != "" {
