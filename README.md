@@ -13,20 +13,25 @@ We have designed Holmes-Storage to operate as a reference implementation. In doi
 ## Dependencies
 ### Supported Databases
 Holmes-Storage supports multiple databases and splits them into two categories: Object Stores and Document Stores. 
-Object Stores are responsible for storing the file-based malicious objects collected by the analyst: binary files such as PE32 and ELF, PDFs, HTML code, Zips files etc. Document Stores are contain the results of the Holmes-Totem and Holmes-Totem-Dynamic analytic results of the files in Object Stores. This was done to enable users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Stores.
+Object Stores are responsible for storing the file-based malicious objects collected by the analyst: binary files such as PE32 and ELF, PDFs, HTML code, Zips files etc. Document Stores contain the output of Holmes-Totem and Holmes-Totem-Dynamic Services. This was done to enable users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Stores.
 
 #### I. Object Stores
-We support three primary object storage databases. 
-- Local File System
+We support two primary object storage databases. 
+
 - S3 compatible
 - (Soon) MongoDB Gridfs
 
 There are several tools you can use for implementing Object Stores. Depending on the intended scale of your work with Holmes-Storage, we would recommend:
 
-- [AWS](https://aws.amazon.com/) for cloud computing, industry and large-scale implementation
-- [RIAK-CS](http://docs.basho.com/riak/cs/latest), [LeoFS](http://leo-project.net/leofs/) and similar, for mid  to large scale implementations
-- [Minio](https://github.com/minio/minio), [Pithos](http://pithos.io/) for development and small to mid scale implementations
-- [Fake-S3](https://github.com/jubos/fake-s3) for project exploration, quick testing and small scale development
+  Framework | Workstation | Mid-scale | Large-scale 
+  --------- | ----------- | --------- | ----------- 
+  [AWS](https://aws.amazon.com/) | [] | [] | [x] 
+  [RIAK-CS](http://docs.basho.com/riak/cs/latest) | [] | [] | [x] 
+  [LeoFS](http://leo-project.net/leofs/) | [] | [] | [x] 
+  [Pithos](http://pithos.io/) | [] | [x] | [] 
+  [Minio](https://github.com/minio/minio) | [] | [x] | [] 
+  [Fake-S3](https://github.com/jubos/fake-s3) | [x] | [] | [] 
+  
 
 If you want to run Holmes-Storage on your local machine for testing or development purposes, we recommend you use lightweight servers compatible with the Amazon S3 API. This will make the installation and usage of Holmes-Storage  faster and more efficient. There are several great options to fulfill this role: [Fake-S3](https://github.com/jubos/fake-s3), [Minio](https://github.com/minio/minio), [Pithos](http://pithos.io/) etc. The above mentioned frameworks are only suggestions, any S3 compatible storage will do. Check out their documentation to find out which option is more suitable for the work you intend to do. 
 
@@ -58,7 +63,7 @@ We support two primary object storage databases.
 We recommend a Cassandra cluster for large deployments.
 
 ##### Cassandra 
-Holmes-Storage supports single node or cluster installation of Cassandra version 3.5.x and higher. The version requirement is because of the significant improvement in system performance when leveraging the newly introduced [SASIIndex](https://github.com/apache/cassandra/blob/trunk/doc/SASI.md) for secondary indexing. We highly recommend deploying Cassandra as a cluster with a minimum of three Cassandra nodes in production environments.
+Holmes-Storage supports single node or cluster installation of Cassandra version 3.10 and higher. The version requirement is because of the significant improvement in system performance when leveraging the newly introduced [SASIIndex](https://github.com/apache/cassandra/blob/trunk/doc/SASI.md) for secondary indexing and [Materialized Views](https://www.datastax.com/dev/blog/new-in-cassandra-3-0-materialized-views). We highly recommend deploying Cassandra as a cluster with a minimum of three Cassandra nodes in production environments.
 
 
 ###### Configuration
