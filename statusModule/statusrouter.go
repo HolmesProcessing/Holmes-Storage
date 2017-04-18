@@ -272,51 +272,29 @@ func (this *Router) RecvPlannerStatus(plannerstatus *msgtypes.PlannerStatus, ses
 }
 
 func (this *Router) RecvServiceStatus(sstat *msgtypes.ServiceStatus, session *server.Session) (cm *msgtypes.ControlMessage) {
-	var (
-		machine_uuid = session.GetMachineUuid().ToString()
-		planner_uuid = session.GetUuid().ToString()
-		service_uri  = sstat.Uri
-	)
-	if machine, err := this.db.GetMachine(machine_uuid); err == gocql.ErrNotFound {
-		warning.Println("Received ServiceStatus for an unregistered machine (" + machine_uuid + ") from: " + session.Address.String())
+	if service, err := this.db.GetService(sstat.Uri); err == gocql.ErrNotFound {
+		service = &storerGeneric.Service{
+			Uri:           sstat.Uri,
+			ServiceUUID:   gocql.TimeUUID().String(),
+			Name:          sstat.Name,
+			Configuration: sstat.ConfigProfileName,
+		}
+		err = this.db.StoreService(service)
+		if err != nil {
+			return this.HandleError(err, session)
+		}
 	} else if err != nil {
 		return this.HandleError(err, session)
 	} else {
-		machine.LastSeen = time.Now()
-		if err := this.db.UpdateMachine(machine); err != nil {
-			return this.HandleError(err, session)
+		if sstat.Name != "" {
+			service.Name = sstat.Name
 		}
-
-		if _, err = this.db.GetPlanner(machine_uuid, planner_uuid); err == gocql.ErrNotFound {
-			warning.Println("Received ServiceStatus for an unregistered planner (" + planner_uuid + ") from: " + session.Address.String())
-		} else if err != nil {
-			this.HandleError(err, session)
-		} else {
-			if service, err := this.db.GetService(service_uri); err == gocql.ErrNotFound {
-				service = &storerGeneric.Service{
-					Uri:           service_uri,
-					ServiceUUID:   gocql.TimeUUID().String(),
-					Name:          sstat.Name,
-					Configuration: sstat.ConfigProfileName,
-				}
-				err = this.db.StoreService(service)
-				if err != nil {
-					return this.HandleError(err, session)
-				}
-			} else if err != nil {
-				return this.HandleError(err, session)
-			} else {
-				if sstat.Name != "" {
-					service.Name = sstat.Name
-				}
-				if sstat.ConfigProfileName != "" {
-					service.Configuration = sstat.ConfigProfileName
-				}
-				err = this.db.UpdateService(service)
-				if err != nil {
-					return this.HandleError(err, session)
-				}
-			}
+		if sstat.ConfigProfileName != "" {
+			service.Configuration = sstat.ConfigProfileName
+		}
+		err = this.db.UpdateService(service)
+		if err != nil {
+			return this.HandleError(err, session)
 		}
 	}
 	return

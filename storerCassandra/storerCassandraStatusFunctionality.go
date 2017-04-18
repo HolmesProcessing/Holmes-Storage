@@ -26,8 +26,8 @@ const (
     INSERT INTO planners (machine_uuid, planner_uuid, name, ip, port, configuration, first_seen)
     VALUES (?, ?, ?, ?, ?, ?, ?);`
 	query_insert_service = `
-    INSERT INTO services (service_uuid, name, uri, configuration)
-    VALUES (?, ?, ?, ?);`
+    INSERT INTO services (uri, name, configuration)
+    VALUES (?, ?, ?);`
 
 	query_insert_machine_lastseen = `
     INSERT INTO machines_lastseen (machine_uuid, last_seen)
@@ -65,11 +65,7 @@ func (this StorerCassandra) StorePlanner(p *sg.Planner) error {
 }
 
 func (this StorerCassandra) StoreService(s *sg.Service) error {
-	// if _, err := gocql.ParseUUID(s.PlannerUUID); err != nil {
-	// 	return err
-	// }
-	s.ServiceUUID = gocql.TimeUUID().String()
-	return this.StatusDB.Query(query_insert_service, s.ServiceUUID, s.Name, s.Uri, s.Configuration).Exec()
+	return this.StatusDB.Query(query_insert_service, s.Uri, s.Name, s.Configuration).Exec()
 }
 
 // -------------------------------------------------------------------------- //
@@ -363,7 +359,7 @@ const (
     USING TTL 3600;`
 	query_insert_servicelog = `
     INSERT INTO service_logs_ts (
-      service_uuid,
+      uri,
       timestamp,
       message
     )
@@ -371,7 +367,7 @@ const (
     USING TTL 3600;`
 	query_insert_servicetask = `
     INSERT INTO service_tasks_ts (
-      service_uuid,
+      uri,
       timestamp,
       task
     )
@@ -404,23 +400,17 @@ func (this StorerCassandra) StorePlannerLogs(planner_uuid string, logs []*sg.Log
 	return nil
 }
 
-func (this StorerCassandra) StoreServiceLogs(service_uuid string, logs []*sg.LogEntry) error {
-	if _, err := gocql.ParseUUID(service_uuid); err != nil {
-		return err
-	}
+func (this StorerCassandra) StoreServiceLogs(uri string, logs []*sg.LogEntry) error {
 	for _, log := range logs {
-		if err := this.StatusDB.Query(query_insert_servicelog, service_uuid, log.Timestamp, log.Message).Exec(); err != nil {
+		if err := this.StatusDB.Query(query_insert_servicelog, uri, log.Timestamp, log.Message).Exec(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (this StorerCassandra) StoreServiceTask(service_uuid string, task *sg.TaskEntry) error {
-	if _, err := gocql.ParseUUID(service_uuid); err != nil {
-		return err
-	}
-	return this.StatusDB.Query(query_insert_servicetask, service_uuid, task.Timestamp, task.Task).Exec()
+func (this StorerCassandra) StoreServiceTask(uri string, task *sg.TaskEntry) error {
+	return this.StatusDB.Query(query_insert_servicetask, uri, task.Timestamp, task.Task).Exec()
 }
 
 // -------------------------------------------------------------------------- //

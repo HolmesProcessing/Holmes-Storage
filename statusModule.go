@@ -31,7 +31,7 @@ func initStatusModule(httpBinding string, mainStorer storerGeneric.Storer, warni
 	httprouter.PUT("/kv/set/*path", router.HttpKvSet)
 	httprouter.DELETE("/kv/del/*path", router.HttpKvDel)
 	go func() {
-		fmt.Println(http.ListenAndServe(httpBinding, httprouter))
+		fmt.Println(http.ListenAndServe(httpBinding, httprouter)) // does block
 	}()
 
 	router.Run() // does block
