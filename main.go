@@ -32,6 +32,8 @@ type config struct {
 
 	HTTP         string
 	ExtendedMime bool
+
+	Status string
 }
 
 var (
@@ -44,10 +46,11 @@ var (
 
 func main() {
 	var (
-		setup    bool
-		objSetup bool
-		confPath string
-		err      error
+		setup        bool
+		objSetup     bool
+		launchStatus bool = false
+		confPath     string
+		err          error
 	)
 
 	// setup basic logging to stdout
@@ -79,6 +82,7 @@ func main() {
 		mainStorer = &storerMongoDB.StorerMongoDB{}
 	case "cassandra":
 		mainStorer = &StorerCassandra.StorerCassandra{}
+		launchStatus = true
 	//case "mysql":
 	//	mainStorer = &storerMySQL{}
 	default:
@@ -88,12 +92,18 @@ func main() {
 	if setup {
 		// Create the DB.
 		err := mainStorer.CreateDB(conf.Database)
+		if err == nil && launchStatus {
+			err = mainStorer.CreateDBStatus(conf.Database)
+		}
 		if err != nil {
-			warning.Println("Storer setup failed!", err.Error())
+			warning.Panicln("Storer setup failed!", err.Error())
 		}
 	}
 
 	mainStorer, err = mainStorer.Initialize(conf.Database)
+	if err == nil && launchStatus {
+		mainStorer, err = mainStorer.InitializeStatus(conf.Database)
+	}
 	if err != nil {
 		warning.Panicln("Storer initialization failed!", err.Error())
 	}
@@ -119,6 +129,9 @@ func main() {
 	// initialize the databse.
 	if setup {
 		err = mainStorer.Setup()
+		if err == nil && launchStatus {
+			err = mainStorer.SetupStatus()
+		}
 		if err != nil {
 			warning.Panicln("Storer setup failed!", err.Error())
 		}
@@ -139,7 +152,16 @@ func main() {
 		return // we don't want to execute this any further
 	}
 
+	// start status server for UDP status api
+	if launchStatus {
+		info.Println("Listening for status messages on:", conf.Status)
+		go initStatusModule(conf.Status, mainStorer, warning, info, debug)
+	} else {
+		info.Println("Not launching the status module: Unsupported main storer database.")
+	}
+
 	// start webserver for HTTP API
+	info.Println("Listening for http requests on:", conf.HTTP)
 	go initHTTP(conf.HTTP, conf.ExtendedMime)
 
 	// start to listen for new restults
