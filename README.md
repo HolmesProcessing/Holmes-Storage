@@ -1,26 +1,16 @@
 # Holmes-Storage: A Storage Planner for Holmes Processing [![Build Status](https://travis-ci.org/HolmesProcessing/Holmes-Storage.svg?branch=master)](https://travis-ci.org/HolmesProcessing/Holmes-Storage)
 
 ## Overview
+Holmes-Storage is responsible for managing the interaction of Holmes Processing with the database backends. At its core, Holmes-Storage organizes the information contained in Holmes Processing and provides a RESTful and AMQP interface for accessing the data. Additionally, Holmes-Storage provides an abstraction layer between the specific database types. This allows a Holmes Processing system to change database types and combine different databases together for optimization.
 
+When running, Holmes-Storage will:
+- Automatically fetches the analysis reuslts from Holmes-Totem and Holmes-Totem-Dynamic over AMQP for storage
+- Support the submission on objects via a RESTful API
+- Support the retrieval of results, raw objects, object meta-data, and object submission information via a RESTful API
+
+We have designed Holmes-Storage to operate as a reference implementation. In doing so, we have optimized the system to seamlessly plug into other parts of Holmes Processing and optimized the storage of information for generic machine learning algorithms and queries through a web frontend. Furthermore, we have seperated the storage of binary blobs and textural data in order to better handle how data is stored and compressed. As such, Holmes-Storage will store file based objects (i.e. ELF, PE32, PDF, etc) in a S3 compatible backend and the meta information of the objects and results from analysis in Cassandra. With respect to non-file type objects, these are purely stored in Cassandra. In our internal production systems, this scheme has supported 10s of million of objects along with the results from associated Totem and Totem-Dynamic Services with minimal effort. However, as with any enterprise system, customization will be required to improve the performance for custom use cases. Anyway, we hope this serves you well or at least helps guide you in developing custom Holmes-Storage Planners.
 
 ## Dependencies
-
-
-## Compilation
-
-
-## Installation
-* Copy the default configuration file located in config/storage.conf.example and change it according to your needs.
-* Setup the database by calling
-`./Holmes-Storage --config <path_to_config> --setup`
-This will create the configured keyspace if it does not exist yet. For cassandra, the default keyspace will use the following replication options: `{'class': 'NetworkTopologyStrategy', 'dc': '2'}`. If you want to change this, you can do so after the setup by connecting with `cqlsh` and changing it manually. For more information about that we refer to the official documentation of cassandra [Cassandra Replication](http://cassandra.apache.org/doc/latest/architecture/dynamo.html) [Altering Keyspace](https://docs.datastax.com/en/cql/3.1/cql/cql_reference/alter_keyspace_r.html)
-You can also create the keyspace with different replication options  before executing the setup and the setup won't overwrite that.
-The setup will also create the necessary tables and indices.
-* Setup the object storer by calling
-`./Holmes-Storage --config <path_to_config> --objSetup`
-* Execute storage by calling
-`./Holmes-Storage --config <path_to_config>`
-
 ### Supported Databases
 Holmes-Storage supports multiple databases and splits them into two categories: Object Stores and Document Stores. This was done to provide users to more easily select their preferred solutions while also allowing the mixing of databases for optimization purposes. In production environments, we strongly recommend using an [S3](https://aws.amazon.com/documentation/s3/) compatible Object Store, such as [RIAK-CS](http://docs.basho.com/riak/cs/latest), and a clustered deployment of [Cassandra](http://cassandra.apache.org/) for the Document Store. 
 
@@ -37,9 +27,6 @@ We support two primary object storage databases. We recommend a Cassandra cluste
 
 ##### Cassandra 
 Holmes-Storage supports a single or cluster installation of Cassandra version 3.5.x and higher. The version requirement is because of the significant improvement in system performance when leveraging the newly introduced [SASIIndex](https://github.com/apache/cassandra/blob/trunk/doc/SASI.md) for secondary indexing. We highly recommend deploying Cassandra as a cluster with a minimum of three Cassandra nodes in production environments.
-
-###### Installation
-
 
 ###### Configuration
 New Cassandra clusters will need to be configured before Cassandra is started for the first time. We have highlighted a few of the configuration options that are critical or will improve performance. For additional options, please see the [Cassandra instillation guide](http://cassandra.apache.org/doc/latest/getting_started/configuring.html#main-runtime-properties). 
@@ -58,7 +45,45 @@ You should populate the "seeds" value with the IP addresses for at least two add
 The "listen_address" should be set to the external IP address for the current Cassandra node.
 `listen_address: <external ip address>`
 
-###### Best Practices
+##### RiakCS
+Follow [this](http://docs.basho.com/riak/cs/2.1.1/tutorials/fast-track/local-testing-environment/) tutorial for installation of RiakCS.
+###### Configuration
+After successful installation, the user’s access key and secret key are returned in the `key_id` and `key_secret` fields respectively. Use these keys to update **key** and **secret** your config file _( storage.conf.example )_
+
+Holmes-Storage uses Amazon S3 signature version 4 for authentication. To enable authV4 on riak-cs, add `{auth_v4_enabled, true}` to advanced.config file ( should be in `/riak-cs/etc/`)
+
+## Installation
+Copy the default configuration file located in config/storage.conf.example and change it according to your needs.
+```
+$ cp storage.conf.example storage.conf
+```
+Update the `storage.conf` file in config folder and adjust the ports if need accordingly.
+To build the Holmes-Storage, just run
+```
+$ go build
+```
+
+Setup the database by calling
+```
+$ ./Holmes-Storage --config <path_to_config> --setup
+```
+This will create the configured keyspace if it does not exist yet. For cassandra, the default keyspace will use the following replication options:
+```
+ {'class': 'NetworkTopologyStrategy', 'dc': '2'}
+```
+If you want to change this, you can do so after the setup by connecting with cqlsh and changing it manually. For more information about that we refer to the official documentation of cassandra Cassandra Replication Altering Keyspace You can also create the keyspace with different replication options before executing the setup and the setup won't overwrite that. The setup will also create the necessary tables and indices.
+
+Setup the object storer by calling:
+```
+$ ./Holmes-Storage --config <path_to_config> --objSetup
+```
+
+Execute storage by calling:
+```
+$ ./Holmes-Storage --config <path_to_config>
+```
+
+## Best Practices
 On a new cluster, Holmes-Storage will setup the database in an optimal way for the average user. However, we recommend Cassandra users to please read the [Cassandra's Operations website](http://wiki.apache.org/cassandra/Operations) for more information Cassandra best practices.  Additionally, it is critical that the Cassandra cluster be regularly repaired using `nodetool repair` command. We recommend that this is executed on every node, one at a time, at least once a weekly.
 
 ###### Indexing
