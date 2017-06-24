@@ -1,6 +1,8 @@
 package amqp
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"strings"
 	"time"
@@ -112,6 +114,26 @@ func handleMessage(c *context.Ctx, msg amqp.Delivery) {
 
 	// TODO: Totem needs to send execution time
 
+	// compress results using gzip
+	var resultsGZ bytes.Buffer
+	gz := gzip.NewWriter(&resultsGZ)
+	if _, err := gz.Write([]byte(m.Data)); err != nil {
+		c.Warning.Println("Failed to compress results (writer):", err.Error(), "SHA256:", m.SHA256)
+		msg.Nack(false, true)
+		return
+	}
+
+	if err := gz.Flush(); err != nil {
+		c.Warning.Println("Failed to compress results (flush):", err.Error(), "SHA256:", m.SHA256)
+		msg.Nack(false, true)
+		return
+	}
+	if err := gz.Close(); err != nil {
+		c.Warning.Println("Failed to compress results (close):", err.Error(), "SHA256:", m.SHA256)
+		msg.Nack(false, true)
+		return
+	}
+
 	result := &dataStorage.Result{
 		Id:                "",                        //will be filled by the storage engine
 		SHA256:            strings.ToLower(m.SHA256), //totem currently send the hash all upper case
@@ -124,7 +146,7 @@ func handleMessage(c *context.Ctx, msg amqp.Delivery) {
 		ServiceConfig:     "NotSend",
 		ObjectCategory:    []string{"NotSend"},
 		ObjectType:        "sample",
-		Results:           m.Data,
+		Results:           resultsGZ.Bytes(),
 		Tags:              m.Tags,
 		ExecutionTime:     time.Now(),
 		WatchguardStatus:  "NotImplemented",
