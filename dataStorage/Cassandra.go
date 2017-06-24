@@ -80,7 +80,7 @@ func (s *Cassandra) Setup() error {
         service_config text,
         object_category set<text>,
         object_type text,
-        results text,
+        results blob,
         tags set<text>,
         execution_time timestamp,
         watchguard_status text,
@@ -97,8 +97,8 @@ func (s *Cassandra) Setup() error {
 		return err
 	}
 
-	tableResultsBySHA256 := `CREATE MATERIALIZED VIEW results_by_sha256 AS
-        SELECT * FROM results
+	tableResultsMetaBySHA256 := `CREATE MATERIALIZED VIEW results_meta_by_sha256 AS
+        SELECT id, sha256, schema_version, user_id, source_id, source_tag, service_name, service_version, service_config, object_category, object_type, tags, execution_time, watchguard_status, watchguard_log, watchguard_version, comment FROM results
         WHERE sha256 IS NOT NULL 
         AND id IS NOT NULL 
         AND service_name IS NOT NULL 
@@ -106,7 +106,20 @@ func (s *Cassandra) Setup() error {
         AND object_type IS NOT NULL
         PRIMARY KEY((sha256), id, service_name, service_version, object_type)
         WITH CLUSTERING ORDER BY (id DESC);`
-	if err := s.DB.Query(tableResultsBySHA256).Exec(); err != nil {
+	if err := s.DB.Query(tableResultsMetaBySHA256).Exec(); err != nil {
+		return err
+	}
+
+	tableResultsDataBySHA256 := `CREATE MATERIALIZED VIEW results_data_by_sha256 AS
+        SELECT id, sha256, service_name, service_version, object_type, results FROM results
+        WHERE sha256 IS NOT NULL 
+        AND id IS NOT NULL 
+        AND service_name IS NOT NULL 
+        AND service_version IS NOT NULL 
+        AND object_type IS NOT NULL
+        PRIMARY KEY((sha256), id, service_name, service_version, object_type)
+        WITH CLUSTERING ORDER BY (id DESC);`
+	if err := s.DB.Query(tableResultsDataBySHA256).Exec(); err != nil {
 		return err
 	}
 

@@ -115,7 +115,7 @@ type Result struct {
 	ServiceConfig     string    `json:"service_config"`
 	ObjectCategory    []string  `json:"object_category"`
 	ObjectType        string    `json:"object_type"`
-	Results           string    `json:"results"`
+	Results           []byte    `json:"results"`
 	Tags              []string  `json:"tags"`
 	ExecutionTime     time.Time `json:"execution_time"`
 	WatchguardStatus  string    `json:"watchguard_status"`
